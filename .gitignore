@@ -5,3 +5,4 @@ node_modules/
 *.log
 *.tar.gz
 *.tgz
+.build/

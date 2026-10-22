@@ -15,9 +15,17 @@ parser.add_argument('--renderer', required=True, type=Path)
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 destination = root / 'index.html'
+fragment = (root / 'src' / 'paper-study.html').read_text(encoding='utf-8')
+metadata = (root / 'data' / 'books.json').read_text(encoding='utf-8')
+if fragment.count('__EMMAUS_BOOKS__') != 1:
+    raise RuntimeError('Expected exactly one book metadata placeholder.')
+build_directory = root / '.build'
+build_directory.mkdir(exist_ok=True)
+prepared = build_directory / 'paper-study.html'
+prepared.write_text(fragment.replace('__EMMAUS_BOOKS__', metadata.replace('<', '\\u003c')), encoding='utf-8')
 subprocess.run([
     sys.executable, str(args.renderer.resolve()),
-    str(root / 'src' / 'paper-study.html'), str(destination),
+    str(prepared), str(destination),
     '--title', 'Emmaus · 纸间研读', '--force',
 ], check=True)
 
@@ -38,6 +46,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 }
 </style>'''
 page = destination.read_text(encoding='utf-8')
+page = page.replace("default-src 'none';", "default-src 'none'; connect-src 'self';", 1)
 page = page.replace('<html lang="en"', '<html lang="zh-CN"', 1)
 page = page.replace('</head>', outer_css + '\n</head>', 1)
 pattern = re.compile(r'(<iframe\b[^>]*\bdata-srcdoc=")(.*?)(")', re.DOTALL)
@@ -48,5 +57,21 @@ frame = html.unescape(match.group(2))
 frame = frame.replace('<html lang="en"', '<html lang="zh-CN"', 1)
 frame = frame.replace('</head>', inner_css + '\n</head>', 1)
 page = page[:match.start(2)] + html.escape(frame, quote=True) + page[match.end(2):]
+bridge = '''<script>
+(() => {
+  const frame=document.getElementById('codex-visualization'),cache=new Map();
+  window.addEventListener('message',async event=>{
+    const request=event.data;
+    if(event.source!==frame.contentWindow||request?.type!=='emmaus-bible-request'||typeof request.id!=='string'||request.id.length>120||!Number.isInteger(request.book)||request.book<1||request.book>66)return;
+    try {
+      let pending=cache.get(request.book);
+      if(!pending){pending=fetch(new URL('data/bible/'+request.book+'.json',location.href),{credentials:'omit'}).then(response=>{if(!response.ok)throw Error('Unavailable');return response.json();});cache.set(request.book,pending);}
+      const data=await pending;
+      frame.contentWindow.postMessage({type:'emmaus-bible-response',id:request.id,data},'*');
+    }catch(error){cache.delete(request.book);frame.contentWindow.postMessage({type:'emmaus-bible-response',id:request.id,error:'Unavailable'},'*');}
+  });
+})();
+</script>'''
+page = page.replace('</body>', bridge + '\n</body>', 1)
 destination.write_text(page, encoding='utf-8', newline='\n')
 print('Built mobile web demo with isolated viewport and unchanged browser storage keys.')
