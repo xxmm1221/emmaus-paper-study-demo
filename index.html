@@ -2170,6 +2170,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function render() {
     const win=current(),paired=!!win?.paired&amp;&amp;!peek,maximized=!!win?.maximized&amp;&amp;!peek,a=captureAnchor(),parent=paired?upper:origin;
     const moving=source.parentElement!==parent,wasReaderVisible=!!reader.getClientRects().length;
+    const materialScroller=win?.kind===&#x27;note&#x27;?note:commentary,wasMaterialVisible=!!materialScroller.getClientRects().length;
     origin.hidden=paired||maximized;origin.inert=paired||maximized;upper.hidden=!paired;divider.hidden=!paired;
     phone.classList.toggle(&#x27;is-paired&#x27;,paired);phone.classList.toggle(&#x27;is-focused&#x27;,s.focused);phone.classList.toggle(&#x27;is-peek&#x27;,peek);
     phone.classList.toggle(&#x27;is-maximized&#x27;,maximized);phone.dataset.focusOwner=s.focusOwner||&#x27;all&#x27;;
@@ -2201,6 +2202,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     }
     q(&#x27;[data-expand-label]&#x27;).textContent=expanded?&#x27;恢复原大小&#x27;:&#x27;展开阅读&#x27;;
     geometry(win?displayHeight:0);if(moving||!wasReaderVisible&amp;&amp;reader.getClientRects().length)restoreAnchor(a);
+    if(win&amp;&amp;!wasMaterialVisible&amp;&amp;materialScroller.getClientRects().length)materialScroller.scrollTop=win.scroll||0;
     updateSelection();savedList();
   }
   function closeMenu(){menu=&#x27;&#x27;;q(&#x27;.ep-more&#x27;).hidden=true;q(&#x27;.ep-chapters&#x27;).hidden=true;q(&#x27;.ep-menu-scrim&#x27;).hidden=true;qa(&#x27;[data-act=&quot;more&quot;],[data-act=&quot;chapters&quot;]&#x27;).forEach(el=&gt;el.setAttribute(&#x27;aria-expanded&#x27;,&#x27;false&#x27;));}
@@ -2238,7 +2240,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     }else commit(false);
   }
   function saveCurrentScroll(){
-    const w=current();if(w){w.scroll=w.kind===&#x27;note&#x27;?note.scrollTop:commentary.scrollTop;if(w.kind===&#x27;note&#x27;)s.notes[w.id]=note.value;}
+    const w=current();if(w){const pane=w.kind===&#x27;note&#x27;?note:commentary;if(pane.getClientRects().length)w.scroll=pane.scrollTop;if(w.kind===&#x27;note&#x27;)s.notes[w.id]=note.value;}
     if(reader.getClientRects().length){entry().scroll=reader.scrollTop;if(w?.paired)w.reading={...entry()};}
   }
   function openWindow(kind,resume){
@@ -2309,7 +2311,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       case&#x27;close&#x27;:dismiss();break;case&#x27;end&#x27;:dismiss(true);break;
       case&#x27;reading&#x27;:drawer(false);if(w){w.kept=true;dismiss();}break;
       case&#x27;expand&#x27;:if(w){saveCurrentScroll();closeMenu();peek=false;s.focused=false;if(!w.maximized){priorHeight=w.height;w.floatingHeight=priorHeight;w.maximized=true;w.height=H();}else{w.maximized=false;w.height=w.floatingHeight||priorHeight;}expanded=!!w.maximized;render();spring(w.height,remember);}break;
-      case&#x27;peek&#x27;:if(w){closeMenu();peek=true;render();spring(62,remember);}break;
+      case&#x27;peek&#x27;:if(w){saveCurrentScroll();closeMenu();peek=true;render();spring(62,remember);}break;
       case&#x27;unpeek&#x27;:if(w){peek=false;s.focused=false;render();spring(w.height,remember);}break;
     }
   });
