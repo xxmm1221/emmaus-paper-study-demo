@@ -8,10 +8,14 @@
 <title>Emmaus · 纸间研读</title>
 <style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
 
+<style id="emmaus-web-viewport">
+html,body { width:100%;height:100%;margin:0;padding:0!important;overflow:hidden;overscroll-behavior:none; }
+#codex-visualization { width:100%;height:100vh!important;height:100dvh!important;border:0;margin:0;display:block; }
+</style>
 </head>
 <body>
 <iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Emmaus · 纸间研读" data-srcdoc="&lt;!doctype html&gt;
-&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;html lang=&quot;zh-CN&quot; data-visualize-standalone&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
 &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
@@ -1497,6 +1501,16 @@ svg.lucide {
 }
 
 html&gt;body{padding:0}&lt;/style&gt;
+&lt;style id=&quot;emmaus-web-viewport&quot;&gt;
+html,html&gt;body { width:100%;height:100%;margin:0;padding:0;overflow:hidden;overscroll-behavior:none; }
+html #emmaus-paper-study { height:100%; }
+html #emmaus-paper-study .ep-stage { height:100vh;height:100dvh;min-height:0;padding:24px 10px;overflow:hidden; }
+html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height:min(800px,calc(100dvh - 48px)); }
+@media(max-width:600px) {
+  html #emmaus-paper-study .ep-stage { padding:0; }
+  html #emmaus-paper-study .ep-phone { height:100vh;height:100dvh;max-width:none;border:0;border-radius:0;box-shadow:none; }
+}
+&lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
 &lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
@@ -1808,6 +1822,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;div class=&quot;ep-dock&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-act=&quot;open-reference&quot;&gt;&lt;i data-lucide=&quot;book-open&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;研读&lt;/button&gt;&lt;span&gt;&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;cursor-interaction&quot; data-act=&quot;open-note&quot;&gt;&lt;i data-lucide=&quot;pen-line&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;笔记&lt;/button&gt;&lt;/div&gt;
         &lt;article class=&quot;ep-sheet&quot; aria-label=&quot;临时研读浮窗&quot;&gt;
           &lt;header class=&quot;ep-sheet-bar&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;ep-icon ep-page-menu cursor-interaction&quot; data-act=&quot;drawer&quot; aria-label=&quot;打开侧栏&quot; hidden&gt;&lt;i data-lucide=&quot;panel-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
             &lt;button type=&quot;button&quot; class=&quot;ep-handle cursor-interaction&quot; aria-label=&quot;拖动调整浮窗高度，方向键微调&quot;&gt;&lt;i data-lucide=&quot;grip-horizontal&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span data-sheet-name&gt;札记&lt;/span&gt;&lt;/button&gt;
             &lt;button type=&quot;button&quot; class=&quot;ep-text ep-pair cursor-interaction&quot; data-act=&quot;pair&quot; aria-label=&quot;与经文上下对读&quot;&gt;&lt;i data-lucide=&quot;rows-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span data-pair-label&gt;对读&lt;/span&gt;&lt;/button&gt;
             &lt;button type=&quot;button&quot; class=&quot;ep-text ep-keep cursor-interaction&quot; data-act=&quot;keep&quot; aria-label=&quot;保留当前研读&quot;&gt;&lt;span data-keep-label&gt;保留&lt;/span&gt;&lt;i data-lucide=&quot;check&quot; data-kept-icon aria-hidden=&quot;true&quot; hidden&gt;&lt;/i&gt;&lt;/button&gt;
@@ -1843,7 +1858,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;span class=&quot;ep-drawer-caption&quot;&gt;在路上，也在话语里。&lt;/span&gt;
         &lt;button type=&quot;button&quot; class=&quot;ep-nav-row ep-current cursor-interaction&quot; data-act=&quot;reading&quot;&gt;&lt;i data-lucide=&quot;book-open&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;阅读&lt;small data-reading-place&gt;罗马书 · 第 8 章&lt;/small&gt;&lt;/span&gt;&lt;i data-lucide=&quot;arrow-up-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
         &lt;button type=&quot;button&quot; class=&quot;ep-nav-row cursor-interaction&quot; data-act=&quot;open-note&quot;&gt;&lt;i data-lucide=&quot;notebook-pen&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;写笔记&lt;/span&gt;&lt;/button&gt;
-        &lt;div class=&quot;ep-saved-heading&quot;&gt;&lt;span&gt;保留的研读&lt;/span&gt;&lt;span data-saved-count&gt;0&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;ep-saved-heading&quot;&gt;&lt;span&gt;后台研读&lt;/span&gt;&lt;span data-saved-count&gt;0&lt;/span&gt;&lt;/div&gt;
         &lt;div class=&quot;ep-saved-list&quot;&gt;&lt;/div&gt;
         &lt;div class=&quot;ep-drawer-bottom&quot;&gt;&lt;span&gt;EMMAUS&lt;/span&gt;&lt;small&gt;读得更深，而非更多。&lt;/small&gt;&lt;/div&gt;
       &lt;/aside&gt;
@@ -1877,7 +1892,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   position:relative; width:100%; max-width:424px; height:800px; overflow:hidden; isolation:isolate;
   background:var(--ep-paper); color:var(--ep-ink); border-radius:34px; border:1px solid var(--ep-line);
   box-shadow:0 24px 64px var(--ep-shadow),0 3px 10px var(--ep-shadow); font:400 14px/1.7 var(--ep-sans);
-  -webkit-tap-highlight-color:transparent; touch-action:pan-y;
+  -webkit-tap-highlight-color:transparent; touch-action:pan-y; overscroll-behavior:none; overflow-anchor:none;
 }
 #emmaus-paper-study .ep-phone * { box-sizing:border-box; }
 #emmaus-paper-study .ep-phone [hidden] { display:none!important; }
@@ -1897,7 +1912,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #emmaus-paper-study .ep-book { display:flex; align-items:center; justify-content:flex-start; flex:1; min-width:0; height:44px; gap:7px; font-size:13px!important; letter-spacing:1px; }
 #emmaus-paper-study .ep-book svg { width:12px; height:12px; color:var(--ep-muted); }
 #emmaus-paper-study .ep-history { display:flex; color:var(--ep-muted); }
-#emmaus-paper-study .ep-script-scroll { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; padding:15px 31px 52px; -webkit-overflow-scrolling:touch; }
+#emmaus-paper-study .ep-script-scroll { flex:1; min-height:0; overflow:auto; overscroll-behavior:none; overflow-anchor:none; scrollbar-width:none; padding:15px 31px 52px; -webkit-overflow-scrolling:touch; }
 #emmaus-paper-study .ep-script-scroll::-webkit-scrollbar,#emmaus-paper-study .ep-commentary::-webkit-scrollbar { display:none; }
 #emmaus-paper-study .ep-chapter-cover { display:flex; align-items:center; gap:22px; margin:4px 0 29px; }
 #emmaus-paper-study .ep-chapter-number { font:400 67px/1.15 Georgia,serif; letter-spacing:-5px; color:var(--ep-accent); }
@@ -1923,7 +1938,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #emmaus-paper-study .ep-upper { min-height:0; overflow:hidden; }
 #emmaus-paper-study .ep-material { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
 #emmaus-paper-study .ep-material-label { height:0; min-height:0; overflow:hidden; padding:0 23px; display:flex; align-items:center; justify-content:space-between; color:var(--ep-muted); font-size:11px; letter-spacing:1px; transition:height var(--ep-duration) var(--ep-ease),min-height var(--ep-duration) var(--ep-ease); }
-#emmaus-paper-study .ep-commentary { min-height:0; flex:1; padding:14px 27px 28px; overflow:auto; scrollbar-width:none; overscroll-behavior:contain; }
+#emmaus-paper-study .ep-commentary { min-height:0; flex:1; padding:14px 27px 28px; overflow:auto; scrollbar-width:none; overscroll-behavior:none; overflow-anchor:none; }
 #emmaus-paper-study .ep-eyebrow { display:block; color:var(--ep-muted); font-size:11px; letter-spacing:1px; }
 #emmaus-paper-study .ep-eyebrow &gt; span { opacity:.5; margin:0 6px; }
 #emmaus-paper-study .ep-material h2 { font:500 25px/1.6 var(--ep-serif); letter-spacing:.6px; margin:12px 0 18px; }
@@ -1941,7 +1956,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #emmaus-paper-study .ep-divider span::after { content:&quot;&quot;; display:block; height:3px; border-radius:3px; background:var(--ep-line); }
 #emmaus-paper-study .ep-note { flex:1; min-height:0; display:flex; flex-direction:column; padding:12px 25px 0; }
 #emmaus-paper-study .ep-note h2 { margin:10px 0 8px; font-size:24px; }
-#emmaus-paper-study .ep-note textarea { flex:1; min-height:48px; width:100%; resize:none; border:0; border-radius:0; padding:10px 0 12px; background:var(--ep-sheet); color:var(--ep-ink); font:400 17px/1.95 var(--ep-serif); }
+#emmaus-paper-study .ep-note textarea { flex:1; min-height:48px; width:100%; resize:none; border:0; border-radius:0; padding:10px 0 12px; background:var(--ep-sheet); color:var(--ep-ink); font:400 17px/1.95 var(--ep-serif); overscroll-behavior:none; overflow-anchor:none; }
 #emmaus-paper-study .ep-note textarea::placeholder { color:var(--ep-muted); }
 #emmaus-paper-study .ep-note-foot { min-height:52px; display:flex; align-items:center; justify-content:space-between; gap:5px; border-top:1px solid var(--ep-line); }
 #emmaus-paper-study .ep-note-foot &gt; span { font-size:11px; color:var(--ep-muted); }
@@ -1967,7 +1982,7 @@ html&gt;body{padding:0}&lt;/style&gt;
 #emmaus-paper-study .ep-nav-row.ep-current { background:var(--ep-soft); }
 #emmaus-paper-study .ep-nav-row &gt; svg { width:17px; color:var(--ep-accent); }
 #emmaus-paper-study .ep-saved-heading { display:flex; align-items:center; justify-content:space-between; padding:31px 12px 12px; font-size:11px; color:var(--ep-muted); }
-#emmaus-paper-study .ep-saved-list { overflow:auto; min-height:0; }
+#emmaus-paper-study .ep-saved-list { overflow:auto; min-height:0; overscroll-behavior:none; overflow-anchor:none; }
 #emmaus-paper-study .ep-saved-list .ep-empty { display:block; padding:7px 12px; font:400 13px/1.9 var(--ep-serif); color:var(--ep-muted); }
 #emmaus-paper-study .ep-drawer-bottom { margin-top:auto; padding:24px 12px 0; color:var(--ep-muted); }
 #emmaus-paper-study .ep-drawer-bottom &gt; span { display:block; letter-spacing:4px; font:400 11px/2.8 Georgia,serif; }
@@ -1994,12 +2009,16 @@ html&gt;body{padding:0}&lt;/style&gt;
 #emmaus-paper-study .ep-phone.is-paired .ep-eyebrow { display:none; }
 #emmaus-paper-study .ep-phone.is-paired .ep-material h2 { font-size:23px; margin-top:6px; }
 #emmaus-paper-study .ep-phone.is-paired .ep-note { padding-top:0; }
-#emmaus-paper-study .ep-phone.is-focused .ep-reading-bar,#emmaus-paper-study .ep-phone.is-focused .ep-sheet-bar { height:0; min-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
-#emmaus-paper-study .ep-phone.is-focused .ep-material-label { height:0; min-height:0; }
-#emmaus-paper-study .ep-phone.is-focused .ep-script-scroll { padding-top:26px; }
-#emmaus-paper-study .ep-phone.is-focused .ep-commentary { padding-top:26px; }
-#emmaus-paper-study .ep-phone.is-focused .ep-dock { display:none; }
-#emmaus-paper-study .ep-phone.is-focused .ep-backdrop-head { opacity:0; pointer-events:none; }
+#emmaus-paper-study .ep-phone.is-focused:is([data-focus-owner=&quot;all&quot;],[data-focus-owner=&quot;reader&quot;]) .ep-reading-bar,
+#emmaus-paper-study .ep-phone.is-focused[data-focus-owner=&quot;all&quot;] .ep-sheet-bar,
+#emmaus-paper-study .ep-phone.is-focused[data-focus-owner=&quot;material&quot;]:not(.is-paired) .ep-sheet-bar { height:0; min-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
+#emmaus-paper-study .ep-phone.is-focused:is([data-focus-owner=&quot;all&quot;],[data-focus-owner=&quot;material&quot;]) .ep-material-label { height:0; min-height:0; }
+#emmaus-paper-study .ep-phone.is-focused:is([data-focus-owner=&quot;all&quot;],[data-focus-owner=&quot;reader&quot;]) .ep-script-scroll { padding-top:26px; }
+#emmaus-paper-study .ep-phone.is-focused:is([data-focus-owner=&quot;all&quot;],[data-focus-owner=&quot;material&quot;]) .ep-commentary { padding-top:26px; }
+#emmaus-paper-study .ep-phone.is-focused:is([data-focus-owner=&quot;all&quot;],[data-focus-owner=&quot;reader&quot;]) .ep-dock { display:none; }
+#emmaus-paper-study .ep-phone.is-focused[data-focus-owner=&quot;all&quot;] .ep-backdrop-head { opacity:0; pointer-events:none; }
+#emmaus-paper-study .ep-phone.is-maximized .ep-sheet { left:0; right:0; border-radius:0; box-shadow:none; }
+#emmaus-paper-study .ep-phone.is-maximized .ep-sheet-bar { padding-top:max(5px,env(safe-area-inset-top)); }
 #emmaus-paper-study .ep-phone.is-peek .ep-sheet-bar,#emmaus-paper-study .ep-phone.is-peek .ep-sheet-body { display:none; }
 ::view-transition-group(emmaus-paper-source),::view-transition-group(emmaus-paper-sheet),::view-transition-group(emmaus-paper-material) { animation-duration:460ms; animation-timing-function:cubic-bezier(.22,1,.36,1); }
 @media(max-width:440px) {
@@ -2041,7 +2060,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     8:[[28,&#x27;我们晓得万事都互相效力，叫爱神的人得益处，就是按他旨意被召的人。&#x27;],[29,&#x27;因为他预先所知道的人，就预先定下效法他儿子的模样，使他儿子在许多弟兄中作长子。&#x27;],[30,&#x27;预先所定下的人又召他们来；所召来的人又称他们为义；所称为义的人又叫他们得荣耀。&#x27;],[31,&#x27;既是这样，还有什么说的呢？神若帮助我们，谁能敌挡我们呢？&#x27;],[32,&#x27;神既不爱惜自己的儿子，为我们众人舍了，岂不也把万物和他一同白白地赐给我们吗？&#x27;],[35,&#x27;谁能使我们与基督的爱隔绝呢？难道是患难吗？是困苦吗？是逼迫吗？是饥饿吗？是赤身露体吗？是危险吗？是刀剑吗？&#x27;],[37,&#x27;然而，靠着爱我们的主，在这一切的事上已经得胜有余了。&#x27;]],
     9:[[1,&#x27;我在基督里说真话，并不谎言，有我良心被圣灵感动，给我作见证：&#x27;],[2,&#x27;我是大有忧愁，心里时常伤痛；&#x27;],[3,&#x27;为我弟兄，我骨肉之亲，就是自己被咒诅，与基督分离，我也愿意。&#x27;],[4,&#x27;他们是以色列人；那儿子的名分、荣耀、诸约、律法、礼仪、应许都是他们的。&#x27;],[5,&#x27;列祖就是他们的祖宗，按肉体说，基督也是从他们出来的。&#x27;]]
   };
-  const s = {version:3, windows:[{id:&#x27;reference-1&#x27;,kind:&#x27;reference&#x27;,kept:false,paired:false,height:342,ratio:.47,scroll:0}], active:&#x27;reference-1&#x27;, notes:{}, history:[{chapter:8,scroll:0,selected:28}],index:0,focused:false};
+  const s = {version:4, windows:[{id:&#x27;reference-1&#x27;,kind:&#x27;reference&#x27;,kept:false,paired:false,maximized:false,height:342,ratio:.47,scroll:0}], active:&#x27;reference-1&#x27;, notes:{}, history:[{chapter:8,scroll:0,selected:28}],index:0,focused:false,focusOwner:&#x27;all&#x27;};
   const clientStamp=&#x27;paper-&#x27;+Date.now()+&#x27;-&#x27;+Math.random().toString(36).slice(2,8);
   let displayHeight = 342, drawerAmount=0, drawerOpen=false, peek=false, expanded=false, priorHeight=342, menu=&#x27;&#x27;, selection=false;
   let anim=0, drawerAnim=0, toastTimer=0, editTimer=0, scrollSave=0, suppressScrollUntil=0;
@@ -2049,11 +2068,11 @@ html&gt;body{padding:0}&lt;/style&gt;
   const entry = () =&gt; s.history[s.index];
   const icons = () =&gt; { if (globalThis.lucide) lucide.createIcons({attrs:{width:18,height:18}}); };
   function remember() {
-    entry().scroll = reader.scrollTop;
-    const win = current(); if (win) win.scroll = win.kind===&#x27;note&#x27; ? note.scrollTop : commentary.scrollTop;
+    saveCurrentScroll();
+    const win = current();
     if (!window.openai || typeof window.openai.setWidgetState!==&#x27;function&#x27;) return;
     const snapshot = {...s, sender:clientStamp, ui:{peek,expanded,priorHeight}, notes:Object.fromEntries(Object.entries(s.notes).slice(-4).map(([k,v])=&gt;[k,v.slice(0,1000)])), history:s.history.slice(-16)};
-    const state = {modelContent:{design:&#x27;纸间研读&#x27;,paired:!!win?.paired,kept:!!win?.kept,focused:s.focused,material:win?.kind||&#x27;reading&#x27;,heightPercent:Math.round(displayHeight/H()*100)},privateContent:snapshot};
+    const state = {modelContent:{design:&#x27;纸间研读&#x27;,paired:!!win?.paired,kept:!!win?.kept,maximized:!!win?.maximized,backgroundWindows:s.windows.filter(w=&gt;w.id!==s.active&amp;&amp;w.kept).length,focused:s.focused,material:win?.kind||&#x27;reading&#x27;,heightPercent:Math.round(displayHeight/H()*100)},privateContent:snapshot};
     const r=window.openai.setWidgetState(state); if(r?.catch)r.catch(()=&gt;{});
   }
   function announce(message) {
@@ -2061,12 +2080,14 @@ html&gt;body{padding:0}&lt;/style&gt;
     clearTimeout(toastTimer); toastTimer=setTimeout(()=&gt;q(&#x27;.ep-toast&#x27;).hidden=true,1900);
   }
   function captureAnchor() {
+    if(!reader.getClientRects().length)return {scroll:entry().scroll||0};
     const top=reader.getBoundingClientRect().top;
     const el=qa(&#x27;.ep-verse&#x27;).find(el=&gt;el.getBoundingClientRect().bottom&gt;top+8);
     return el?{verse:el.dataset.verse,offset:el.getBoundingClientRect().top-top,scroll:reader.scrollTop}:{scroll:reader.scrollTop};
   }
   function restoreAnchor(a) {
     suppressScrollUntil=performance.now()+550;
+    if(!reader.getClientRects().length)return;
     reader.scrollTop=a.scroll;
     const el=a.verse&amp;&amp;q(&#x27;[data-verse=&quot;&#x27;+a.verse+&#x27;&quot;]&#x27;);
     if(el)reader.scrollTop+=el.getBoundingClientRect().top-reader.getBoundingClientRect().top-a.offset;
@@ -2108,24 +2129,25 @@ html&gt;body{padding:0}&lt;/style&gt;
     q(&#x27;.ep-selection&#x27;).style.top=clamp(r.bottom-p.top-58,85,H()-90)+&#x27;px&#x27;;
   }
   function geometry(height=displayHeight) {
+    height=clamp(height,0,current()?.maximized&amp;&amp;!peek?H():H()-24);
     displayHeight=height;
-    const win=current(), paired=!!win?.paired&amp;&amp;!peek;
-    sheet.style.height=Math.max(0,height)+&#x27;px&#x27;;sheet.style.transform=&#x27;translate3d(0,&#x27;+(H()-12-height)+&#x27;px,0)&#x27;;
-    origin.style.bottom=win&amp;&amp;!paired?Math.max(0,height+22)+&#x27;px&#x27;:&#x27;0px&#x27;;
+    const win=current(), paired=!!win?.paired&amp;&amp;!peek,maximized=!!win?.maximized&amp;&amp;!peek;
+    sheet.style.height=Math.max(0,height)+&#x27;px&#x27;;sheet.style.transform=&#x27;translate3d(0,&#x27;+(H()-(maximized?0:12)-height)+&#x27;px,0)&#x27;;
+    origin.style.bottom=win&amp;&amp;!paired&amp;&amp;!maximized?Math.max(0,height+22)+&#x27;px&#x27;:&#x27;0px&#x27;;
     q(&#x27;.ep-origin&#x27;).style.pointerEvents=paired?&#x27;none&#x27;:&#x27;&#x27;;
     if(paired&amp;&amp;!peek){
       const div=matchMedia(&#x27;(pointer:coarse)&#x27;).matches?44:32;
-      const area=Math.max(330,sheetBody.clientHeight-div);
-      const lowerMin=win.kind===&#x27;note&#x27;?210:180;
-      const ratio=clamp(win.ratio,Math.min(.45,160/area),Math.max(.55,1-lowerMin/area));
-      sheetBody.style.gridTemplateRows=&#x27;minmax(160px,&#x27;+ratio+&#x27;fr) &#x27;+div+&#x27;px minmax(&#x27;+lowerMin+&#x27;px,&#x27;+(1-ratio)+&#x27;fr)&#x27;;
+      const area=Math.max(1,sheetBody.clientHeight-div);
+      const upperMin=Math.min(160,area*.4),lowerMin=Math.min(win.kind===&#x27;note&#x27;?210:180,area*.4);
+      const ratio=clamp(win.ratio,upperMin/area,1-lowerMin/area);
+      sheetBody.style.gridTemplateRows=&#x27;minmax(&#x27;+upperMin+&#x27;px,&#x27;+ratio+&#x27;fr) &#x27;+div+&#x27;px minmax(&#x27;+lowerMin+&#x27;px,&#x27;+(1-ratio)+&#x27;fr)&#x27;;
     }else sheetBody.style.gridTemplateRows=&#x27;&#x27;;
     q(&#x27;.ep-handle&#x27;).setAttribute(&#x27;aria-label&#x27;,&#x27;浮窗高度 &#x27;+Math.round(height/H()*100)+&#x27;%，拖动调整，方向键微调&#x27;);
-    q(&#x27;.ep-restore&#x27;).style.bottom=win&amp;&amp;!paired?height+28+&#x27;px&#x27;:&#x27;23px&#x27;;
+    q(&#x27;.ep-restore&#x27;).style.bottom=win&amp;&amp;!paired&amp;&amp;!maximized&amp;&amp;s.focusOwner!==&#x27;material&#x27;?height+28+&#x27;px&#x27;:&#x27;23px&#x27;;
     positionSelection();
   }
   function spring(target,done) {
-    cancelAnimationFrame(anim);target=clamp(target,0,H()-24);
+    cancelAnimationFrame(anim);target=clamp(target,0,current()?.maximized&amp;&amp;!peek?H():H()-24);
     if(reduce()){geometry(target);done?.();return;}
     let x=displayHeight,v=0,last=performance.now();
     const frame=now=&gt;{
@@ -2136,25 +2158,29 @@ html&gt;body{padding:0}&lt;/style&gt;
     };anim=requestAnimationFrame(frame);
   }
   function savedList() {
-    const saved=s.windows.filter(w=&gt;w.kept),list=q(&#x27;.ep-saved-list&#x27;);list.replaceChildren();q(&#x27;[data-saved-count]&#x27;).textContent=saved.length;
+    const saved=s.windows.filter(w=&gt;w.kept&amp;&amp;w.id!==s.active),list=q(&#x27;.ep-saved-list&#x27;);list.replaceChildren();q(&#x27;[data-saved-count]&#x27;).textContent=saved.length;
     if(!saved.length){const span=document.createElement(&#x27;span&#x27;);span.className=&#x27;ep-empty&#x27;;span.textContent=&#x27;值得留下的，在这里继续。&#x27;;list.append(span);return;}
     saved.forEach(w=&gt;{
       const b=document.createElement(&#x27;button&#x27;);b.type=&#x27;button&#x27;;b.className=&#x27;ep-nav-row cursor-interaction&#x27;;b.dataset.resume=w.id;
       const icon=document.createElement(&#x27;i&#x27;);icon.dataset.lucide=w.paired?&#x27;rows-2&#x27;:w.kind===&#x27;note&#x27;?&#x27;notebook-pen&#x27;:&#x27;book-open&#x27;;icon.setAttribute(&#x27;aria-hidden&#x27;,&#x27;true&#x27;);
       const title=document.createElement(&#x27;span&#x27;);title.textContent=w.paired?&#x27;经文与&#x27;+(w.kind===&#x27;note&#x27;?&#x27;笔记&#x27;:&#x27;札记&#x27;):w.kind===&#x27;note&#x27;?&#x27;关于盼望&#x27;:&#x27;益处，不止于顺境&#x27;;
-      const meta=document.createElement(&#x27;small&#x27;);meta.textContent=&#x27;罗马书 · 已保留&#x27;;title.append(meta);b.append(icon,title);list.append(b);
+      const meta=document.createElement(&#x27;small&#x27;);meta.textContent=&#x27;已在后台 · 点按全屏继续&#x27;;title.append(meta);b.append(icon,title);list.append(b);
     });icons();
   }
   function render() {
-    const win=current(),paired=!!win?.paired&amp;&amp;!peek,a=captureAnchor(),parent=paired?upper:origin;
-    const moving=source.parentElement!==parent;
-    origin.hidden=paired;upper.hidden=!paired;divider.hidden=!paired;
+    const win=current(),paired=!!win?.paired&amp;&amp;!peek,maximized=!!win?.maximized&amp;&amp;!peek,a=captureAnchor(),parent=paired?upper:origin;
+    const moving=source.parentElement!==parent,wasReaderVisible=!!reader.getClientRects().length;
+    origin.hidden=paired||maximized;origin.inert=paired||maximized;upper.hidden=!paired;divider.hidden=!paired;
     phone.classList.toggle(&#x27;is-paired&#x27;,paired);phone.classList.toggle(&#x27;is-focused&#x27;,s.focused);phone.classList.toggle(&#x27;is-peek&#x27;,peek);
+    phone.classList.toggle(&#x27;is-maximized&#x27;,maximized);phone.dataset.focusOwner=s.focusOwner||&#x27;all&#x27;;
+    q(&#x27;.ep-page-menu&#x27;).hidden=!maximized;
     if(moving)parent.append(source);
     sheet.hidden=!win;q(&#x27;.ep-dock&#x27;).hidden=!!win;q(&#x27;.ep-restore&#x27;).hidden=!s.focused;
-    q(&#x27;.ep-backdrop-head&#x27;).hidden=!paired;
+    q(&#x27;.ep-backdrop-head&#x27;).hidden=!paired||maximized;
     q(&#x27;.ep-peek&#x27;).hidden=!peek;q(&#x27;.ep-sheet-body&#x27;).inert=peek;
-    qa(&#x27;.ep-reading-bar,.ep-sheet-bar,.ep-backdrop-head&#x27;).forEach(el=&gt;el.inert=s.focused);
+    q(&#x27;.ep-reading-bar&#x27;).inert=s.focused&amp;&amp;s.focusOwner!==&#x27;material&#x27;;
+    q(&#x27;.ep-sheet-bar&#x27;).inert=s.focused&amp;&amp;(s.focusOwner===&#x27;all&#x27;||s.focusOwner===&#x27;material&#x27;&amp;&amp;!paired);
+    q(&#x27;.ep-backdrop-head&#x27;).inert=s.focused&amp;&amp;s.focusOwner===&#x27;all&#x27;;
     if(win){
       const isNote=win.kind===&#x27;note&#x27;;q(&#x27;.ep-commentary&#x27;).hidden=isNote;q(&#x27;.ep-note&#x27;).hidden=!isNote;
       if(note.value!==(s.notes[win.id]||&#x27;&#x27;))note.value=s.notes[win.id]||&#x27;&#x27;;
@@ -2165,15 +2191,16 @@ html&gt;body{padding:0}&lt;/style&gt;
       q(&#x27;[data-keep-label]&#x27;).hidden=win.kept;q(&#x27;[data-kept-icon]&#x27;).toggleAttribute(&#x27;hidden&#x27;,!win.kept);
       q(&#x27;[data-act=&quot;keep&quot;]&#x27;).setAttribute(&#x27;data-tooltip&#x27;,win.kept?&#x27;已保留，可从侧栏继续&#x27;:&#x27;保留这个研读现场&#x27;);
       q(&#x27;[data-act=&quot;keep&quot;]&#x27;).classList.toggle(&#x27;is-kept&#x27;,win.kept);q(&#x27;[data-act=&quot;keep&quot;]&#x27;).setAttribute(&#x27;aria-label&#x27;,win.kept?&#x27;已保留当前研读&#x27;:&#x27;保留当前研读&#x27;);
-      q(&#x27;[data-act=&quot;close&quot;]&#x27;).setAttribute(&#x27;aria-label&#x27;,win.kept?&#x27;收起已保留浮窗&#x27;:&#x27;关闭临时浮窗&#x27;);
-      sheet.setAttribute(&#x27;aria-label&#x27;,(win.kept?&#x27;已保留&#x27;:&#x27;临时&#x27;)+(paired?&#x27;上下对读浮窗&#x27;:isNote?&#x27;笔记浮窗&#x27;:&#x27;研读浮窗&#x27;));
+      q(&#x27;[data-act=&quot;close&quot;]&#x27;).setAttribute(&#x27;aria-label&#x27;,win.kept?&#x27;转入后台&#x27;:&#x27;关闭临时浮窗&#x27;);
+      sheet.setAttribute(&#x27;aria-label&#x27;,(win.kept?&#x27;已保留&#x27;:&#x27;临时&#x27;)+(paired?&#x27;上下对读&#x27;:isNote?&#x27;笔记&#x27;:&#x27;研读&#x27;)+(maximized?&#x27;页面&#x27;:&#x27;浮窗&#x27;));
+      sheet.dataset.windowId=win.id;sheet.dataset.presentation=maximized?&#x27;maximized&#x27;:&#x27;floating&#x27;;
       material.setAttribute(&#x27;aria-label&#x27;,isNote?&#x27;笔记窗口&#x27;:&#x27;研读札记窗口&#x27;);
       q(&#x27;[data-material-label]&#x27;).textContent=isNote?&#x27;我的笔记&#x27;:&#x27;研读札记&#x27;;q(&#x27;[data-reference-label]&#x27;).textContent=isNote?&#x27;个人研读&#x27;:&#x27;罗 8:28&#x27;;
       q(&#x27;[data-peek-title]&#x27;).textContent=paired?&#x27;经文与&#x27;+(isNote?&#x27;笔记&#x27;:&#x27;札记&#x27;):isNote?&#x27;关于盼望&#x27;:&#x27;研读札记&#x27;;
       q(&#x27;[data-end-saved]&#x27;).hidden=!win.kept;
     }
     q(&#x27;[data-expand-label]&#x27;).textContent=expanded?&#x27;恢复原大小&#x27;:&#x27;展开阅读&#x27;;
-    geometry(win?displayHeight:0);if(moving)restoreAnchor(a);
+    geometry(win?displayHeight:0);if(moving||!wasReaderVisible&amp;&amp;reader.getClientRects().length)restoreAnchor(a);
     updateSelection();savedList();
   }
   function closeMenu(){menu=&#x27;&#x27;;q(&#x27;.ep-more&#x27;).hidden=true;q(&#x27;.ep-chapters&#x27;).hidden=true;q(&#x27;.ep-menu-scrim&#x27;).hidden=true;qa(&#x27;[data-act=&quot;more&quot;],[data-act=&quot;chapters&quot;]&#x27;).forEach(el=&gt;el.setAttribute(&#x27;aria-expanded&#x27;,&#x27;false&#x27;));}
@@ -2184,10 +2211,10 @@ html&gt;body{padding:0}&lt;/style&gt;
     pop.style.left=clamp(b.right-p.left-pop.offsetWidth,14,W()-pop.offsetWidth-14)+&#x27;px&#x27;;
     pop.style.top=clamp(b.bottom-p.top+6,18,H()-pop.offsetHeight-18)+&#x27;px&#x27;;button.setAttribute(&#x27;aria-expanded&#x27;,&#x27;true&#x27;);
   }
-  function setFocus(value){
-    closeMenu();selection=false;s.focused=value;suppressScrollUntil=performance.now()+550;render();
+  function setFocus(value,owner=&#x27;all&#x27;){
+    closeMenu();selection=false;s.focused=value;s.focusOwner=value?owner:&#x27;all&#x27;;suppressScrollUntil=performance.now()+550;render();
     const w=current();
-    if(w?.paired&amp;&amp;!peek)spring(value?H()-24:w.height,remember);
+    if(w?.paired&amp;&amp;!peek&amp;&amp;owner===&#x27;all&#x27;)spring(value?(w.maximized?H():H()-24):w.height,remember);
     else{if(!reduce())setTimeout(()=&gt;geometry(),450);remember();}
   }
   function navigate(ch,delta){
@@ -2199,10 +2226,10 @@ html&gt;body{padding:0}&lt;/style&gt;
     remember();
   }
   function pair(){
-    const w=current();if(!w)return;closeMenu();selection=false;peek=false;s.focused=false;expanded=false;
+    const w=current();if(!w)return;closeMenu();selection=false;peek=false;s.focused=false;expanded=!!w.maximized;
     const anchor=captureAnchor();entry().scroll=reader.scrollTop;
     let applied=false;
-    const commit=(immediate)=&gt;{if(applied)return;applied=true;w.paired=!w.paired;w.height=w.paired?H()*.86:Math.min(displayHeight,390);if(immediate)displayHeight=w.height;render();restoreAnchor(anchor);if(immediate)remember();else spring(w.height,()=&gt;{restoreAnchor(anchor);remember();});};
+    const commit=(immediate)=&gt;{if(applied)return;applied=true;w.paired=!w.paired;w.height=w.maximized?H():w.paired?H()*.86:Math.min(displayHeight,390);if(immediate)displayHeight=w.height;render();restoreAnchor(anchor);if(immediate)remember();else spring(w.height,()=&gt;{restoreAnchor(anchor);remember();});};
     if(typeof document.startViewTransition===&#x27;function&#x27;&amp;&amp;!reduce()){
       cancelAnimationFrame(anim);
       source.style.viewTransitionName=&#x27;emmaus-paper-source&#x27;;sheet.style.viewTransitionName=&#x27;emmaus-paper-sheet&#x27;;material.style.viewTransitionName=&#x27;emmaus-paper-material&#x27;;
@@ -2210,26 +2237,42 @@ html&gt;body{padding:0}&lt;/style&gt;
       catch(error){source.style.viewTransitionName=&#x27;&#x27;;sheet.style.viewTransitionName=&#x27;&#x27;;material.style.viewTransitionName=&#x27;&#x27;;commit(false);}
     }else commit(false);
   }
-  function saveCurrentScroll(){const w=current();if(w)w.scroll=w.kind===&#x27;note&#x27;?note.scrollTop:commentary.scrollTop;entry().scroll=reader.scrollTop;}
+  function saveCurrentScroll(){
+    const w=current();if(w){w.scroll=w.kind===&#x27;note&#x27;?note.scrollTop:commentary.scrollTop;if(w.kind===&#x27;note&#x27;)s.notes[w.id]=note.value;}
+    if(reader.getClientRects().length){entry().scroll=reader.scrollTop;if(w?.paired)w.reading={...entry()};}
+  }
   function openWindow(kind,resume){
-    closeMenu();drawer(false);saveCurrentScroll();selection=false;peek=false;expanded=false;s.focused=false;
     let w=resume?s.windows.find(x=&gt;x.id===resume):null;
+    if(resume&amp;&amp;!w){announce(&#x27;这个现场已结束&#x27;);return false;}
     if(!w){
-      if(kind===&#x27;note&#x27;&amp;&amp;Object.keys(s.notes).length&gt;=4){announce(&#x27;本次体验最多保留四份笔记&#x27;);return;}
-      if(s.windows.length&gt;=6){const old=s.windows.find(x=&gt;!x.kept&amp;&amp;x.id!==s.active);if(old)s.windows=s.windows.filter(x=&gt;x!==old);else{announce(&#x27;先收起一个研读现场，再继续&#x27;);return;}}
-      w={id:kind+&#x27;-&#x27;+Date.now(),kind,kept:false,paired:false,height:kind===&#x27;note&#x27;?430:342,ratio:.47,scroll:0};
+      if(kind===&#x27;note&#x27;&amp;&amp;s.windows.filter(x=&gt;x.kind===&#x27;note&#x27;).length&gt;=4){announce(&#x27;最多保留四份笔记，请先结束一份&#x27;);return false;}
+      if(s.windows.length&gt;=6){announce(&#x27;最多保留六个现场，请先结束一个后台现场&#x27;);return false;}
+      w={id:kind+&#x27;-&#x27;+Date.now()+&#x27;-&#x27;+Math.random().toString(36).slice(2,6),kind,kept:false,paired:false,maximized:false,height:kind===&#x27;note&#x27;?430:342,ratio:.47,scroll:0};
       if(kind===&#x27;note&#x27;)s.notes[w.id]=&#x27;&#x27;;s.windows.push(w);
     }
-    const previous=current();s.active=w.id;
-    if(previous&amp;&amp;previous.id!==w.id&amp;&amp;!previous.kept&amp;&amp;previous.kind===&#x27;reference&#x27;)s.windows=s.windows.filter(x=&gt;x.id!==previous.id);
-    displayHeight=previous?Math.min(displayHeight,w.height):0;render();
+    closeMenu();drawer(false);saveCurrentScroll();clearTimeout(editTimer);clearTimeout(scrollSave);cancelAnimationFrame(anim);
+    const previous=current(),autoKept=previous&amp;&amp;previous.id!==w.id&amp;&amp;!previous.kept;
+    if(previous&amp;&amp;previous.id!==w.id)previous.kept=true;
+    selection=false;peek=false;s.focused=false;s.focusOwner=&#x27;all&#x27;;expanded=!!resume;
+    if(resume){priorHeight=w.floatingHeight||(!w.maximized?w.height:342);w.floatingHeight=priorHeight;w.kept=true;w.maximized=true;w.height=H();}
+    s.active=w.id;
+    if(resume&amp;&amp;w.paired&amp;&amp;w.reading){
+      const place={...w.reading};
+      if(place.chapter!==entry().chapter){s.history=s.history.slice(0,s.index+1);s.history.push(place);s.history=s.history.slice(-16);s.index=s.history.length-1;}
+      else Object.assign(entry(),place);
+      chapter();
+    }
+    displayHeight=resume?w.height:previous?Math.min(displayHeight,w.height):0;render();
+    if(reader.getClientRects().length)reader.scrollTop=entry().scroll||0;
     if(w.kind===&#x27;note&#x27;)note.scrollTop=w.scroll||0;else commentary.scrollTop=w.scroll||0;
-    spring(w.height,remember);
+    remember();if(!resume)spring(w.height,remember);
+    if(autoKept)announce(&#x27;上一个页面已保留，放入后台&#x27;);
+    return true;
   }
   function dismiss(end=false){
     const w=current();if(!w)return;closeMenu();selection=false;saveCurrentScroll();
     const anchor=captureAnchor();
-    spring(0,()=&gt;{if(end||!w.kept)s.windows=s.windows.filter(x=&gt;x.id!==w.id);s.active=null;peek=false;s.focused=false;expanded=false;render();restoreAnchor(anchor);remember();});
+    spring(0,()=&gt;{if(end||!w.kept){s.windows=s.windows.filter(x=&gt;x.id!==w.id);delete s.notes[w.id];}s.active=null;peek=false;s.focused=false;expanded=false;render();restoreAnchor(anchor);remember();});
   }
   function quote(){
     const w=current();if(!w||w.kind!==&#x27;note&#x27;||!entry().selected)return;
@@ -2260,18 +2303,18 @@ html&gt;body{padding:0}&lt;/style&gt;
       case&#x27;back&#x27;:navigate(null,-1);break;case&#x27;forward&#x27;:navigate(null,1);break;
       case&#x27;pair&#x27;:pair();break;case&#x27;focus&#x27;:setFocus(true);break;case&#x27;unfocus&#x27;:setFocus(false);break;
       case&#x27;open-reference&#x27;:openWindow(&#x27;reference&#x27;);break;case&#x27;open-note&#x27;:openWindow(&#x27;note&#x27;);break;
-      case&#x27;quote-new&#x27;:openWindow(&#x27;note&#x27;);if(!current()?.paired)pair();quote();break;case&#x27;quote&#x27;:quote();break;
+      case&#x27;quote-new&#x27;:if(openWindow(&#x27;note&#x27;)){if(!current()?.paired)pair();quote();}break;case&#x27;quote&#x27;:quote();break;
       case&#x27;deselect&#x27;:entry().selected=null;selection=false;updateSelection();remember();break;
       case&#x27;keep&#x27;:if(w&amp;&amp;!w.kept){w.kept=true;closeMenu();render();remember();announce(w.paired?&#x27;这组研读，已为你留下&#x27;:&#x27;已保留，可在侧栏继续&#x27;);}break;
       case&#x27;close&#x27;:dismiss();break;case&#x27;end&#x27;:dismiss(true);break;
-      case&#x27;reading&#x27;:drawer(false);if(w)dismiss();break;
-      case&#x27;expand&#x27;:if(w){closeMenu();peek=false;s.focused=false;if(!expanded){priorHeight=w.height;w.height=H()-24;}else w.height=priorHeight;expanded=!expanded;render();spring(w.height,remember);}break;
+      case&#x27;reading&#x27;:drawer(false);if(w){w.kept=true;dismiss();}break;
+      case&#x27;expand&#x27;:if(w){saveCurrentScroll();closeMenu();peek=false;s.focused=false;if(!w.maximized){priorHeight=w.height;w.floatingHeight=priorHeight;w.maximized=true;w.height=H();}else{w.maximized=false;w.height=w.floatingHeight||priorHeight;}expanded=!!w.maximized;render();spring(w.height,remember);}break;
       case&#x27;peek&#x27;:if(w){closeMenu();peek=true;render();spring(62,remember);}break;
       case&#x27;unpeek&#x27;:if(w){peek=false;s.focused=false;render();spring(w.height,remember);}break;
     }
   });
   note.addEventListener(&#x27;input&#x27;,()=&gt;{const w=current();if(!w||w.kind!==&#x27;note&#x27;)return;s.notes[w.id]=note.value; q(&#x27;[data-note-status]&#x27;).textContent=&#x27;这一页，已记下&#x27;;clearTimeout(editTimer);editTimer=setTimeout(remember,500);});
-  function scrollBehavior(el){let last=0,accum=0,dir=0,userUntil=0;
+  function scrollBehavior(el,owner){let last=0,accum=0,dir=0,userUntil=0;
     const intent=()=&gt;{userUntil=performance.now()+1500;};el.addEventListener(&#x27;wheel&#x27;,intent,{passive:true});el.addEventListener(&#x27;pointerdown&#x27;,intent,{passive:true});el.addEventListener(&#x27;keydown&#x27;,intent);
     el.addEventListener(&#x27;scroll&#x27;,()=&gt;{
     const now=el.scrollTop,delta=now-last;last=now;
@@ -2280,12 +2323,28 @@ html&gt;body{padding:0}&lt;/style&gt;
     if(performance.now()&gt;userUntil)return;
     if(Math.sign(delta)!==dir){accum=0;dir=Math.sign(delta);}accum+=delta;
     if(selection){selection=false;updateSelection();}
-    if(accum&gt;50&amp;&amp;!s.focused){setFocus(true);accum=0;}else if(accum&lt; -34&amp;&amp;s.focused){setFocus(false);accum=0;}
+    if(accum&gt;50&amp;&amp;!s.focused){setFocus(true,owner);accum=0;}else if(accum&lt; -34&amp;&amp;s.focused&amp;&amp;(s.focusOwner===owner||s.focusOwner===&#x27;all&#x27;)){setFocus(false);accum=0;}
   },{passive:true});}
-  scrollBehavior(reader);scrollBehavior(commentary);
+  scrollBehavior(reader,&#x27;reader&#x27;);scrollBehavior(commentary,&#x27;material&#x27;);
+  const scrollOwner=target=&gt;target instanceof Element?target.closest(&#x27;.ep-script-scroll,.ep-commentary,textarea,.ep-saved-list&#x27;):null;
+  const canScroll=(el,delta)=&gt;el&amp;&amp;el.scrollHeight&gt;el.clientHeight+1&amp;&amp;(delta&lt;0?el.scrollTop&gt;1:el.scrollTop+el.clientHeight&lt;el.scrollHeight-1);
+  // A gesture belongs to the pane where it started, including at its boundaries.
+  // CSS contains modern scroll chains; this guard also covers short notes and older mobile WebKit.
+  let touchOwner=null;
+  phone.addEventListener(&#x27;touchstart&#x27;,e=&gt;{if(e.touches.length!==1){touchOwner=null;return;}const t=e.touches[0];touchOwner={el:scrollOwner(e.target),x:t.clientX,y:t.clientY};},{passive:true});
+  phone.addEventListener(&#x27;touchmove&#x27;,e=&gt;{
+    if(!touchOwner||e.touches.length!==1)return;
+    const t=e.touches[0],dx=t.clientX-touchOwner.x,dy=touchOwner.y-t.clientY;
+    touchOwner.x=t.clientX;touchOwner.y=t.clientY;
+    if(Math.abs(dy)&lt;=Math.abs(dx))return;
+    if(!canScroll(touchOwner.el,dy)&amp;&amp;e.cancelable)e.preventDefault();
+    e.stopPropagation();
+  },{passive:false});
+  const endTouch=()=&gt;{touchOwner=null;};phone.addEventListener(&#x27;touchend&#x27;,endTouch,{passive:true});phone.addEventListener(&#x27;touchcancel&#x27;,endTouch,{passive:true});
+  phone.addEventListener(&#x27;wheel&#x27;,e=&gt;{if(e.ctrlKey)return;const el=scrollOwner(e.target);if(!canScroll(el,e.deltaY)&amp;&amp;e.cancelable)e.preventDefault();e.stopPropagation();},{passive:false});
   function pointerDrag(handle,type){
     let start=null,raf=0,pending=null,ignoreClick=false;
-    handle.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{if(e.button!==0)return;const w=current();if(!w)return;cancelAnimationFrame(anim);closeMenu();selection=false;updateSelection();start={x:e.clientX,y:e.clientY,h:displayHeight,ratio:w.ratio,lastY:e.clientY,lastT:performance.now(),velocity:0,moved:false};handle.setPointerCapture(e.pointerId);e.preventDefault();});
+    handle.addEventListener(&#x27;pointerdown&#x27;,e=&gt;{if(e.button!==0)return;const w=current();if(!w)return;cancelAnimationFrame(anim);closeMenu();selection=false;updateSelection();if(type===&#x27;height&#x27;&amp;&amp;w.maximized){w.maximized=false;expanded=false;render();}start={x:e.clientX,y:e.clientY,h:displayHeight,ratio:w.ratio,lastY:e.clientY,lastT:performance.now(),velocity:0,moved:false};handle.setPointerCapture(e.pointerId);e.preventDefault();});
     const move=()=&gt;{raf=0;if(!start||!pending)return;const e=pending,w=current(),dy=e.y-start.y;pending=null;start.moved=start.moved||Math.abs(dy)&gt;4;
       const now=performance.now();start.velocity=(e.y-start.lastY)/Math.max(8,now-start.lastT);start.lastY=e.y;start.lastT=now;
       if(type===&#x27;height&#x27;){const min=w.paired?500:w.kind===&#x27;note&#x27;?280:190;geometry(clamp(start.h-dy,min,H()-24));}else{w.ratio=clamp(start.ratio+dy/Math.max(330,sheetBody.clientHeight-32),.26,.74);geometry();}
@@ -2312,21 +2371,22 @@ html&gt;body{padding:0}&lt;/style&gt;
   phone.addEventListener(&#x27;pointerup&#x27;,endEdge);phone.addEventListener(&#x27;pointercancel&#x27;,()=&gt;{if(edge){edge=null;drawer(drawerOpen);}});
   phone.addEventListener(&#x27;keydown&#x27;,e=&gt;{if(e.key!==&#x27;Escape&#x27;)return;e.stopPropagation();if(drawerOpen)drawer(false);else if(menu)closeMenu();else if(selection){selection=false;updateSelection();}else if(s.focused)setFocus(false);else if(expanded)q(&#x27;[data-act=&quot;expand&quot;]&#x27;).click();else if(current())dismiss();});
   function restore(raw){
-    if(!raw||raw.version!==3)return;
+    if(!raw||![3,4].includes(raw.version))return;
     if(!Array.isArray(raw.windows)||!Array.isArray(raw.history))return;
-    s.windows=raw.windows.slice(-6).filter(w=&gt;w&amp;&amp;[&#x27;reference&#x27;,&#x27;note&#x27;].includes(w.kind)&amp;&amp;typeof w.id===&#x27;string&#x27;).map(w=&gt;({...w,height:clamp(Number(w.height)||342,w.paired?500:w.kind===&#x27;note&#x27;?280:190,H()-24),ratio:clamp(Number(w.ratio)||.47,.26,.74)}));
+    const seen=new Set();
+    s.windows=raw.windows.slice(-6).filter(w=&gt;w&amp;&amp;[&#x27;reference&#x27;,&#x27;note&#x27;].includes(w.kind)&amp;&amp;typeof w.id===&#x27;string&#x27;&amp;&amp;!seen.has(w.id)&amp;&amp;seen.add(w.id)).map(w=&gt;({...w,kept:w.id!==raw.active||!!w.kept,maximized:!!w.maximized,height:w.maximized?H():clamp(Number(w.height)||342,Math.min(w.paired?500:w.kind===&#x27;note&#x27;?280:190,H()-24),H()-24),ratio:clamp(Number(w.ratio)||.47,.26,.74)}));
     s.history=raw.history.filter(e=&gt;text[e.chapter]).slice(-16).map(e=&gt;({...e,scroll:Math.max(0,Number(e.scroll)||0)}));if(!s.history.length)s.history=[{chapter:8,scroll:0,selected:28}];
     s.index=clamp(Number(raw.index)||0,0,s.history.length-1);s.active=s.windows.some(w=&gt;w.id===raw.active)?raw.active:null;s.notes={};
-    for(const [k,v]of Object.entries(raw.notes||{}).slice(-4))if(typeof v===&#x27;string&#x27;)s.notes[k]=v.slice(0,1000);
-    s.focused=!!raw.focused;peek=!!raw.ui?.peek;expanded=!!raw.ui?.expanded;priorHeight=clamp(Number(raw.ui?.priorHeight)||342,190,H()-24);displayHeight=current()?(peek?62:s.focused&amp;&amp;current().paired?H()-24:current().height):0;chapter();render();reader.scrollTop=entry().scroll;
+    for(const [k,v]of Object.entries(raw.notes||{}).slice(-4))if(typeof v===&#x27;string&#x27;&amp;&amp;s.windows.some(w=&gt;w.id===k))s.notes[k]=v.slice(0,1000);
+    s.focused=!!raw.focused;s.focusOwner=[&#x27;all&#x27;,&#x27;reader&#x27;,&#x27;material&#x27;].includes(raw.focusOwner)?raw.focusOwner:&#x27;all&#x27;;peek=!!raw.ui?.peek;expanded=!!current()?.maximized;priorHeight=clamp(Number(raw.ui?.priorHeight)||342,190,H()-24);displayHeight=current()?(peek?62:current().maximized?H():s.focused&amp;&amp;current().paired&amp;&amp;s.focusOwner===&#x27;all&#x27;?H()-24:current().height):0;chapter();render();if(reader.getClientRects().length)reader.scrollTop=entry().scroll;
     if(current()?.kind===&#x27;note&#x27;)note.scrollTop=current().scroll||0;else commentary.scrollTop=current()?.scroll||0;
   }
   chapter();render();
   const saved=window.openai?.widgetState?.privateContent;
-  if(saved?.version===3)restore(saved);
+  if([3,4].includes(saved?.version))restore(saved);
   else if(saved?.version===1&amp;&amp;saved.states?.tray){const old=saved.states.tray;if(old.kept){const id=&#x27;previous-study&#x27;;s.windows.push({id,kind:old.kind===&#x27;note&#x27;?&#x27;note&#x27;:&#x27;reference&#x27;,kept:true,paired:!!old.grouped,height:H()*.86,ratio:.47,scroll:0});if(typeof old.note===&#x27;string&#x27;)s.notes[id]=old.note.slice(0,1000);savedList();}}
-  window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{const st=e.detail?.globals?.widgetState?.privateContent;if(st?.version===3&amp;&amp;st.sender!==clientStamp){cancelAnimationFrame(anim);restore(st);}});
-  new ResizeObserver(()=&gt;{if(phone.clientWidth)geometry();}).observe(phone);
+  window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{const st=e.detail?.globals?.widgetState?.privateContent;if([3,4].includes(st?.version)&amp;&amp;st.sender!==clientStamp){cancelAnimationFrame(anim);restore(st);}});
+  new ResizeObserver(()=&gt;{if(!phone.clientWidth)return;const w=current();if(w?.maximized&amp;&amp;!peek){w.height=H();geometry(H());}else geometry();}).observe(phone);
   if(globalThis.Tweak){const design={fontSize:20,lineHeight:1.95,radius:28};const tweak=new Tweak({container:phone,onChange:()=&gt;{phone.style.setProperty(&#x27;--ep-size&#x27;,design.fontSize+&#x27;px&#x27;);phone.style.setProperty(&#x27;--ep-leading&#x27;,design.lineHeight);phone.style.setProperty(&#x27;--ep-radius&#x27;,design.radius+&#x27;px&#x27;);}});tweak.addSlider(design,&#x27;fontSize&#x27;,{label:&#x27;经文字号&#x27;,min:18,max:24,unit:&#x27;px&#x27;});tweak.addSlider(design,&#x27;lineHeight&#x27;,{label:&#x27;阅读行距&#x27;,min:1.6,max:2.2,step:.05});tweak.addSlider(design,&#x27;radius&#x27;,{label:&#x27;浮页圆角&#x27;,min:18,max:34,unit:&#x27;px&#x27;});}
   icons();
 })();
