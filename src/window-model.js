@@ -67,10 +67,9 @@
     if (!w || s.floating === id) return;
     // Release a reopened tab before parking the previous float (no spurious LRU eviction).
     s.tabs = s.tabs.filter(t => t.id !== id);
-    if (s.floating) {
-      if (top(s)?.members.length === 2) minimize(s);
-      else promote(s, s.floating, '旧浮窗提升为最大化');
-    }
+    // One floating slot: every incoming window parks its predecessor as a tab,
+    // regardless of whether the main scene is single, paired, or the directory.
+    if (s.floating) minimize(s);
     detach(s, id); s.floating = id; w.lastOpened = tick(s);
     record(s, action, [id]);
   }
