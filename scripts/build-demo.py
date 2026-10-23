@@ -49,6 +49,10 @@ html,html>body { width:100%;height:100%;margin:0;padding:0;overflow:hidden;overs
 html #emmaus-paper-study { height:100%; }
 html #emmaus-paper-study .ep-stage { height:100vh;height:100dvh;min-height:0;padding:24px 10px;overflow:hidden; }
 html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height:min(800px,calc(100dvh - 48px)); }
+@media(min-width:760px) {
+  html #emmaus-paper-study .ep-stage { padding:20px 24px; }
+  html #emmaus-paper-study .ep-phone { max-width:1440px;height:calc(100vh - 40px);height:calc(100dvh - 40px);border-radius:24px; }
+}
 @media(max-width:600px) {
   html #emmaus-paper-study .ep-stage { padding:0; }
   html #emmaus-paper-study .ep-phone { height:100vh;height:100dvh;max-width:none;border:0;border-radius:0;box-shadow:none; }

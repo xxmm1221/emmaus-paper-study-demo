@@ -1512,6 +1512,10 @@ html,html&gt;body { width:100%;height:100%;margin:0;padding:0;overflow:hidden;ov
 html #emmaus-paper-study { height:100%; }
 html #emmaus-paper-study .ep-stage { height:100vh;height:100dvh;min-height:0;padding:24px 10px;overflow:hidden; }
 html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height:min(800px,calc(100dvh - 48px)); }
+@media(min-width:760px) {
+  html #emmaus-paper-study .ep-stage { padding:20px 24px; }
+  html #emmaus-paper-study .ep-phone { max-width:1440px;height:calc(100vh - 40px);height:calc(100dvh - 40px);border-radius:24px; }
+}
 @media(max-width:600px) {
   html #emmaus-paper-study .ep-stage { padding:0; }
   html #emmaus-paper-study .ep-phone { height:100vh;height:100dvh;max-width:none;border:0;border-radius:0;box-shadow:none; }
@@ -2104,6 +2108,16 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   #emmaus-paper-study .ep-window-shortcuts .ep-icon:last-child { margin-left:0; }
   #emmaus-paper-study .ep-sheet-bar { padding:0 6px 0 10px; }
 }
+/* Wide reading canvas: two readable columns, not an enlarged phone mockup. */
+#emmaus-paper-study .ep-pane { min-width:0; }
+#emmaus-paper-study .ep-phone.is-wide .ep-sheet { left:auto;right:20px;width:min(440px,calc(100% - 40px)); }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider { cursor:ew-resize; }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider::before { top:20px;bottom:20px;left:50%;right:auto;width:1px;height:auto; }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider span { width:3px;height:30px; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-scroll { padding-left:max(28px,calc((100% - 760px)/2));padding-right:max(28px,calc((100% - 760px)/2)); }
+#emmaus-paper-study .ep-phone.is-wide .ep-paired .ep-scroll { padding-left:24px;padding-right:24px; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main .ep-pane-head { padding-left:16px;padding-right:16px; }
+#emmaus-paper-study .ep-divider:hover span,#emmaus-paper-study .ep-divider:focus-visible span { background:var(--accent); }
 &lt;/style&gt;
 &lt;script&gt;/* Window placement is independent of content. This module also runs in Node QA. */
 (function (global) {
@@ -2218,6 +2232,12 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     record(s, &#x27;拆分对读&#x27;, scene.members, scene);
     s.scenes.splice(index, 1, ...[...scene.members].reverse().map(id =&gt; ({id:uid(s, &#x27;scene&#x27;), members:[id], ratio:.5})));
   }
+  function swapPair(s, sceneId) {
+    const scene=s.scenes.find(x=&gt;x.id===sceneId);
+    if(!scene || scene.members.length!==2) return false;
+    scene.members.reverse(); scene.ratio=1-scene.ratio;
+    record(s,&#x27;交换对读位置&#x27;,scene.members,scene); return true;
+  }
   function closeWindow(s, id) {
     if (!get(s, id)) return;
     record(s, &#x27;关闭窗口&#x27;, [id]); detach(s, id);
@@ -2328,7 +2348,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id =&gt; !ids.includes(id)) || s.tabs.length &gt; 3 || s.floating.length &gt; 2 || s.scenes.some(x =&gt; x.members.length &lt; 1 || x.members.length &gt; 2)) throw Error(&#x27;窗口层级不一致&#x27;);
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,swapPair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);
 &lt;/script&gt;
 &lt;script&gt;/* Parse explicit Chinese book references only; a bare time such as 8:28 is not scripture. */
@@ -2526,6 +2546,37 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     animateWindows(before,origin); persist(false); return true;
   }
   let hostViewportBottom = Infinity;
+  const wideLayout=()=&gt;phone.clientWidth&gt;=700;
+  const unpairLabel=()=&gt;wideLayout()?&#x27;拆除对读，左窗置顶&#x27;:&#x27;拆除对读，上窗置顶&#x27;;
+  function pairMetrics(scene=M.top(state)) {
+    const wide=wideLayout(), body=q(&#x27;.ep-scene-body&#x27;);
+    const span=Math.max(1,(wide?body?.clientWidth:body?.clientHeight)-27 || 1);
+    const min=wide?Math.max(.25,Math.min(.5,320/span)):.25;
+    return {wide,span,min,max:1-min,ratio:clamp(scene?.ratio || .5,min,1-min)};
+  }
+  function layoutPair() {
+    const wide=wideLayout(); phone.classList.toggle(&#x27;is-wide&#x27;,wide);
+    const scene=M.top(state), body=q(&#x27;.ep-scene-body&#x27;); if(!scene || !body) return;
+    const paired=scene.members.length===2;
+    q(&#x27;.ep-scene-head&gt;span&#x27;).textContent=paired ? wide?&#x27;左右对读&#x27;:&#x27;上下对读&#x27; : &#x27;EMMAUS&#x27;;
+    if(!paired) return;
+    const {ratio}=pairMetrics(scene), tracks=`minmax(0,${ratio}fr) 27px minmax(0,${1-ratio}fr)`;
+    body.style.gridTemplateColumns=wide?tracks:&#x27;minmax(0,1fr)&#x27;;
+    body.style.gridTemplateRows=wide?&#x27;minmax(0,1fr)&#x27;:tracks;
+    const divider=q(&#x27;.ep-divider&#x27;), label=wide?&#x27;交换左右窗口&#x27;:&#x27;交换上下窗口&#x27;;
+    divider.setAttribute(&#x27;aria-label&#x27;,label);
+    divider.setAttribute(&#x27;aria-description&#x27;,wide?&#x27;点按交换；左右拖动或方向键调整宽度比例&#x27;:&#x27;点按交换；上下拖动或方向键调整高度比例&#x27;);
+    divider.title=wide?&#x27;点按交换左右窗口 · 拖动调宽度&#x27;:&#x27;点按交换上下窗口 · 拖动调高度&#x27;;
+    divider.dataset.axis=wide?&#x27;x&#x27;:&#x27;y&#x27;; divider.dataset.ratio=String(ratio);
+    qa(&#x27;.ep-scene-actions [data-act=&quot;unpair&quot;]&#x27;).forEach(b=&gt;{ b.setAttribute(&#x27;aria-label&#x27;,unpairLabel()); b.title=unpairLabel(); });
+  }
+  function resizeViewport() {
+    finishWindowMotions(); capture();
+    if(gesture) { if(gesture.mode) endGesture({pointerId:gesture.pointer},true); else gesture=null; }
+    if(phone.classList.contains(&#x27;is-wide&#x27;)!==wideLayout()) closeMenu();
+    layoutPair(); layoutFloats();
+    panes.forEach((node,id)=&gt;{if(node.isConnected &amp;&amp; node.dataset.ready===&#x27;true&#x27;)restorePosition(node,M.get(state,id));});
+  }
   function floatGeometry(w) {
     const h = phone.clientHeight, available = Math.max(100,Math.min(h,window.visualViewport?.height || h,hostViewportBottom-phone.getBoundingClientRect().top));
     const topInset = Math.max(12,parseFloat(getComputedStyle(phone).getPropertyValue(&#x27;--safe-top&#x27;)) || 0);
@@ -2713,10 +2764,9 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (!scene) renderDirectory(main,rootCatalog,true);
     else {
       const wrap = document.createElement(&#x27;div&#x27;); wrap.className = &#x27;ep-main-scene&#x27; + (scene.members.length === 2 ? &#x27; ep-paired&#x27; : &#x27;&#x27;); wrap.dataset.sceneId = scene.id;
-      wrap.innerHTML = `&lt;header class=&quot;ep-scene-head&quot;&gt;${button(&#x27;drawer&#x27;,&#x27;打开后台&#x27;,&#x27;panel-left&#x27;)}&lt;span&gt;${scene.members.length === 2 ? &#x27;上下对读&#x27; : &#x27;EMMAUS&#x27;}&lt;/span&gt;${scene.members.length === 2 ? `&lt;div class=&quot;ep-scene-actions&quot; role=&quot;group&quot; aria-label=&quot;对读组合操作&quot;&gt;${button(&#x27;unpair&#x27;,&#x27;拆除对读，上窗置顶&#x27;,&#x27;rows-2&#x27;,scene.id)}${button(&#x27;close-scene&#x27;,&#x27;关闭整个组合&#x27;,&#x27;x&#x27;,scene.id)}${button(&#x27;scene-menu&#x27;,&#x27;组合操作菜单&#x27;,&#x27;ellipsis&#x27;,scene.id)}&lt;/div&gt;` : &#x27;&#x27;}&lt;/header&gt;&lt;div class=&quot;ep-scene-body&quot;&gt;&lt;/div&gt;`;
+      wrap.innerHTML = `&lt;header class=&quot;ep-scene-head&quot;&gt;${button(&#x27;drawer&#x27;,&#x27;打开后台&#x27;,&#x27;panel-left&#x27;)}&lt;span&gt;${scene.members.length === 2 ? &#x27;上下对读&#x27; : &#x27;EMMAUS&#x27;}&lt;/span&gt;${scene.members.length === 2 ? `&lt;div class=&quot;ep-scene-actions&quot; role=&quot;group&quot; aria-label=&quot;对读组合操作&quot;&gt;${button(&#x27;unpair&#x27;,unpairLabel(),&#x27;rows-2&#x27;,scene.id)}${button(&#x27;close-scene&#x27;,&#x27;关闭整个组合&#x27;,&#x27;x&#x27;,scene.id)}${button(&#x27;scene-menu&#x27;,&#x27;组合操作菜单&#x27;,&#x27;ellipsis&#x27;,scene.id)}&lt;/div&gt;` : &#x27;&#x27;}&lt;/header&gt;&lt;div class=&quot;ep-scene-body&quot;&gt;&lt;/div&gt;`;
       const body = wrap.querySelector(&#x27;.ep-scene-body&#x27;);
-      scene.members.forEach((id,index) =&gt; { if (index) { const div = document.createElement(&#x27;button&#x27;); div.type = &#x27;button&#x27;; div.className = &#x27;ep-divider&#x27;; div.dataset.scene = scene.id; div.setAttribute(&#x27;aria-label&#x27;,&#x27;调整上下窗口比例&#x27;); div.setAttribute(&#x27;role&#x27;,&#x27;separator&#x27;); div.setAttribute(&#x27;aria-orientation&#x27;,&#x27;horizontal&#x27;); div.innerHTML = &#x27;&lt;span&gt;&lt;/span&gt;&#x27;; body.append(div); } body.append(ensurePane(M.get(state,id))); });
-      if (scene.members.length === 2) body.style.gridTemplateRows = `minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`;
+      scene.members.forEach((id,index) =&gt; { if (index) { const div = document.createElement(&#x27;button&#x27;); div.type = &#x27;button&#x27;; div.className = &#x27;ep-divider&#x27;; div.dataset.scene = scene.id; div.dataset.act=&#x27;swap-pair&#x27;; div.dataset.id=scene.id; div.innerHTML = &#x27;&lt;span&gt;&lt;/span&gt;&#x27;; body.append(div); } body.append(ensurePane(M.get(state,id))); });
       main.append(wrap);
     }
     for (const sheet of [...slot.children]) if (!state.floating.includes(sheet.dataset.windowId)) sheet.remove();
@@ -2732,7 +2782,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       sheet.append(ensurePane(w));
       sheet.insertAdjacentHTML(&#x27;beforeend&#x27;,`&lt;button class=&quot;ep-resize&quot; data-id=&quot;${esc(id)}&quot; aria-label=&quot;调整浮窗高度&quot; title=&quot;拖动下边缘调整高度&quot; type=&quot;button&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;`);
     }
-    layoutFloats();
+    layoutPair(); layoutFloats();
     q(&#x27;.ep-tabs&#x27;).innerHTML = state.tabs.map(t =&gt; { const w = M.get(state,t.id); return `&lt;div class=&quot;ep-tab-item&quot;&gt;&lt;button class=&quot;ep-tab&quot; data-tab=&quot;${esc(t.id)}&quot; aria-label=&quot;以浮窗打开：${esc(title(w))}&quot;&gt;${icon(w.kind === &#x27;note&#x27; ? &#x27;notebook-pen&#x27; : &#x27;book-open&#x27;)}&lt;span&gt;${esc(title(w))}&lt;/span&gt;&lt;/button&gt;${button(&#x27;close-window&#x27;,&#x27;关闭标签：&#x27;+title(w),&#x27;x&#x27;,t.id,&#x27;ep-icon ep-tab-close&#x27;)}&lt;/div&gt;`; }).join(&#x27;&#x27;);
     renderSaved(); icons(); updateInert(); syncChrome();
     requestAnimationFrame(() =&gt; panes.forEach((node,id) =&gt; { if (node.isConnected &amp;&amp; node.dataset.ready === &#x27;true&#x27;) restorePosition(node,M.get(state,id)); }));
@@ -2745,7 +2795,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function menu(id,anchor,isScene=false,isContent=false) {
     closeMenu(); menuTarget = id; const panel=q(&#x27;.ep-popover&#x27;), w=M.get(state,id);
     const label=isScene?&#x27;对读组合操作&#x27;:isContent ? w?.kind===&#x27;reading&#x27;?&#x27;经文操作&#x27;:w?.kind===&#x27;note&#x27;?&#x27;笔记操作&#x27;:&#x27;研读操作&#x27; : &#x27;窗口操作&#x27;;
-    const actions=isScene ? [{act:&#x27;unpair&#x27;,label:&#x27;拆除对读，上窗置顶&#x27;,icon:&#x27;rows-2&#x27;,id},{act:&#x27;close-scene&#x27;,label:&#x27;关闭整个组合&#x27;,icon:&#x27;x&#x27;,id}] : isContent ? contentActions(w) : windowActions(id);
+    const actions=isScene ? [{act:&#x27;unpair&#x27;,label:unpairLabel(),icon:&#x27;rows-2&#x27;,id},{act:&#x27;close-scene&#x27;,label:&#x27;关闭整个组合&#x27;,icon:&#x27;x&#x27;,id}] : isContent ? contentActions(w) : windowActions(id);
     panel.setAttribute(&#x27;aria-label&#x27;,label); panel.dataset.scope=isScene?&#x27;scene&#x27;:isContent?&#x27;content&#x27;:&#x27;window&#x27;;
     panel.innerHTML=`&lt;span class=&quot;ep-menu-label&quot;&gt;${label}&lt;/span&gt;`+actionButtons(actions,false);
     panel.hidden = q(&#x27;.ep-menu-scrim&#x27;).hidden = false; const a=anchor.getBoundingClientRect(), p=phone.getBoundingClientRect();
@@ -2889,6 +2939,12 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       case &#x27;pin&#x27;: change(() =&gt; M.pin(state,id)); break;
       case &#x27;pair&#x27;: change(() =&gt; M.pair(state,id)); break;
       case &#x27;unpair&#x27;: change(() =&gt; M.unpair(state,id)); break;
+      case &#x27;swap-pair&#x27;: {
+        const hadFocus=document.activeElement===b;
+        change(() =&gt; M.swapPair(state,id));
+        if(hadFocus) q(&#x27;.ep-divider&#x27;)?.focus({preventScroll:true});
+        break;
+      }
       case &#x27;close-window&#x27;: change(() =&gt; M.closeWindow(state,id)); break;
       case &#x27;close-scene&#x27;: change(() =&gt; M.closeScene(state,id)); break;
       case &#x27;pane-menu&#x27;: menu(id,b); break;
@@ -2926,18 +2982,19 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     const rect = phone.getBoundingClientRect(), handle = event.target.closest(&#x27;.ep-handle,.ep-resize,.ep-divider&#x27;);
     const sheet=event.target.closest(&#x27;.ep-sheet&#x27;), w=sheet &amp;&amp; M.get(state,sheet.dataset.windowId), geometry=w &amp;&amp; floatGeometry(w);
     if(w &amp;&amp; !drawerOpen &amp;&amp; !directory) raiseFloat(w.id);
-    gesture = {pointer:event.pointerId,x:event.clientX,y:event.clientY,canOpen:event.clientX-rect.left &lt; rect.width/2,wasOpen:drawerOpen,handle,mode:null,id:w?.id,height:geometry?.height/phone.clientHeight || 0,top:geometry?.top/phone.clientHeight || 0,originalHeight:w?.height,originalTop:w?.floatTop,ratio:M.top(state)?.ratio || .5};
+    gesture = {pointer:event.pointerId,x:event.clientX,y:event.clientY,canOpen:event.clientX-rect.left &lt; rect.width/2,wasOpen:drawerOpen,handle,mode:null,id:w?.id,height:geometry?.height/phone.clientHeight || 0,top:geometry?.top/phone.clientHeight || 0,originalHeight:w?.height,originalTop:w?.floatTop,sceneId:M.top(state)?.id,axis:wideLayout()?&#x27;x&#x27;:&#x27;y&#x27;,originalRatio:M.top(state)?.ratio || .5,ratio:pairMetrics().ratio};
   },true);
   phone.addEventListener(&#x27;pointermove&#x27;,event =&gt; {
     if (!gesture || gesture.pointer !== event.pointerId) return; const g = gesture, dx = event.clientX-g.x, dy = event.clientY-g.y;
     if (!g.mode) {
-      if (Math.abs(dx) &gt; 12 &amp;&amp; Math.abs(dx) &gt; Math.abs(dy)*1.25 &amp;&amp; ((g.canOpen &amp;&amp; dx &gt; 0) || (g.wasOpen &amp;&amp; dx &lt; 0))) {
+      if(g.handle?.classList.contains(&#x27;ep-divider&#x27;) &amp;&amp; g.axis===&#x27;x&#x27; &amp;&amp; Math.abs(dx)&gt;9 &amp;&amp; Math.abs(dx)&gt;Math.abs(dy)*1.25) { g.mode=&#x27;divider&#x27;; }
+      else if (Math.abs(dx) &gt; 12 &amp;&amp; Math.abs(dx) &gt; Math.abs(dy)*1.25 &amp;&amp; ((g.canOpen &amp;&amp; dx &gt; 0) || (g.wasOpen &amp;&amp; dx &lt; 0))) {
         g.mode = &#x27;drawer&#x27;; clearTimeout(drawerTimer); closeMenu(); if (directory) closeDirectory(); q(&#x27;.ep-history-panel&#x27;).hidden = true; renderSaved(); icons(); q(&#x27;.ep-drawer&#x27;).hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = false;
-      } else if (g.handle &amp;&amp; Math.abs(dy) &gt; 9 &amp;&amp; Math.abs(dy) &gt; Math.abs(dx)*1.25) g.mode = g.handle.classList.contains(&#x27;ep-divider&#x27;) ? &#x27;divider&#x27; : g.handle.classList.contains(&#x27;ep-resize&#x27;) ? &#x27;height&#x27; : &#x27;move&#x27;;
+      } else if (g.handle &amp;&amp; Math.abs(dy) &gt; 9 &amp;&amp; Math.abs(dy) &gt; Math.abs(dx)*1.25) g.mode = g.handle.classList.contains(&#x27;ep-divider&#x27;) ? (g.axis===&#x27;y&#x27;?&#x27;divider&#x27;:null) : g.handle.classList.contains(&#x27;ep-resize&#x27;) ? &#x27;height&#x27; : &#x27;move&#x27;;
       else if (Math.abs(dy) &gt; 14 &amp;&amp; !g.handle) { ignoreClickUntil=performance.now()+500; gesture = null; return; }
       if (g.mode) { if(g.id &amp;&amp; [&#x27;height&#x27;,&#x27;move&#x27;].includes(g.mode)) { activateWindow(g.id,false); hideTools(); } phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
     }
-    if (!g.mode) return; event.preventDefault();
+    if (!g.mode) { if(Math.hypot(dx,dy)&gt;14)ignoreClickUntil=performance.now()+500; return; } event.preventDefault();
     if (g.mode === &#x27;drawer&#x27;) {
       const width = q(&#x27;.ep-drawer&#x27;).offsetWidth, progress = clamp((g.wasOpen ? width : 0) + dx,0,width)/width; g.progress = progress;
       drawerProgress(progress,true);
@@ -2948,13 +3005,14 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       layoutFloats();
     } else if (g.mode === &#x27;divider&#x27;) {
       const scene = M.top(state), body = q(&#x27;.ep-scene-body&#x27;); if (!scene || !body) return;
-      scene.ratio = clamp(g.ratio + dy/(body.clientHeight-27),.25,.75); body.style.gridTemplateRows = `minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`;
+      const m=pairMetrics(scene); scene.ratio=clamp(g.ratio+(g.axis===&#x27;x&#x27;?dx:dy)/m.span,m.min,m.max); layoutPair();
     }
   },{capture:true,passive:false});
   function endGesture(event,cancelled=false) {
     const g = gesture; gesture = null; if (!g) return;
     if (phone.hasPointerCapture(event.pointerId)) phone.releasePointerCapture(event.pointerId);
     if (g.mode === &#x27;drawer&#x27;) { drawer(cancelled ? g.wasOpen : g.progress &gt; (g.wasOpen ? .65 : .35)); }
+    if(cancelled &amp;&amp; g.mode===&#x27;divider&#x27;) { const scene=state.scenes.find(s=&gt;s.id===g.sceneId); if(scene)scene.ratio=g.originalRatio; layoutPair(); }
     if(cancelled &amp;&amp; g.id &amp;&amp; [&#x27;height&#x27;,&#x27;move&#x27;].includes(g.mode)) { const w=M.get(state,g.id); w.height=g.originalHeight; w.floatTop=g.originalTop; layoutFloats(); }
     if (g.mode) { ignoreClickUntil = performance.now()+350; persist(); }
   }
@@ -2967,14 +3025,15 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     }
     if(event.target.classList.contains(&#x27;ep-pane&#x27;) &amp;&amp; [&#x27;Enter&#x27;,&#x27; &#x27;].includes(event.key)) { event.preventDefault(); activateWindow(event.target.dataset.windowId); return; }
     const handle = event.target.closest(&#x27;.ep-handle,.ep-resize,.ep-divider&#x27;);
-    if (handle &amp;&amp; [&#x27;ArrowUp&#x27;,&#x27;ArrowDown&#x27;].includes(event.key)) {
-      event.preventDefault(); const delta = event.key === &#x27;ArrowUp&#x27; ? -24 : 24;
+    const resizeKeys=handle?.classList.contains(&#x27;ep-divider&#x27;) &amp;&amp; wideLayout()?[&#x27;ArrowLeft&#x27;,&#x27;ArrowRight&#x27;]:[&#x27;ArrowUp&#x27;,&#x27;ArrowDown&#x27;];
+    if (handle &amp;&amp; resizeKeys.includes(event.key)) {
+      event.preventDefault(); const delta = [&#x27;ArrowUp&#x27;,&#x27;ArrowLeft&#x27;].includes(event.key) ? -24 : 24;
       if (!handle.classList.contains(&#x27;ep-divider&#x27;)) {
         const w=M.get(state,handle.dataset.id), g=floatGeometry(w), h=phone.clientHeight; raiseFloat(w.id);
         if(handle.classList.contains(&#x27;ep-handle&#x27;)) w.floatTop=clamp(g.top+delta,g.topInset,g.available-g.bottomInset-g.height)/h;
         else { w.floatTop=g.top/h; w.height=clamp(g.height+delta,Math.min(205,g.available-g.bottomInset-g.top),g.available-g.bottomInset-g.top)/h; }
         layoutFloats(); persist();
-      } else { const scene=M.top(state); scene.ratio=clamp(scene.ratio+delta/phone.clientHeight,.25,.75); q(&#x27;.ep-scene-body&#x27;).style.gridTemplateRows=`minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`; persist(); }
+      } else { const scene=M.top(state), m=pairMetrics(scene); scene.ratio=clamp(m.ratio+delta/m.span,m.min,m.max); layoutPair(); persist(); }
       return;
     }
     if (event.key === &#x27;Tab&#x27;) {
@@ -3001,7 +3060,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (dirtyNotes.size) return;
     try { const restored = M.restore(raw,books); if (restored) { state = restored; panes.clear(); render(); } } catch (_) { announce(&#x27;收到的阅读状态无法恢复，保留当前内容&#x27;); }
   });
-  new ResizeObserver(layoutFloats).observe(phone);
+  new ResizeObserver(resizeViewport).observe(phone);
   window.visualViewport?.addEventListener(&#x27;resize&#x27;,layoutFloats);
   window.addEventListener(&#x27;message&#x27;,event=&gt;{
     if(event.source!==parent || event.data?.type!==&#x27;emmaus-visible-viewport&#x27; || !Number.isFinite(event.data.bottom)) return;

@@ -266,3 +266,13 @@
   #emmaus-paper-study .ep-window-shortcuts .ep-icon:last-child { margin-left:0; }
   #emmaus-paper-study .ep-sheet-bar { padding:0 6px 0 10px; }
 }
+/* Wide reading canvas: two readable columns, not an enlarged phone mockup. */
+#emmaus-paper-study .ep-pane { min-width:0; }
+#emmaus-paper-study .ep-phone.is-wide .ep-sheet { left:auto;right:20px;width:min(440px,calc(100% - 40px)); }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider { cursor:ew-resize; }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider::before { top:20px;bottom:20px;left:50%;right:auto;width:1px;height:auto; }
+#emmaus-paper-study .ep-phone.is-wide .ep-divider span { width:3px;height:30px; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-scroll { padding-left:max(28px,calc((100% - 760px)/2));padding-right:max(28px,calc((100% - 760px)/2)); }
+#emmaus-paper-study .ep-phone.is-wide .ep-paired .ep-scroll { padding-left:24px;padding-right:24px; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main .ep-pane-head { padding-left:16px;padding-right:16px; }
+#emmaus-paper-study .ep-divider:hover span,#emmaus-paper-study .ep-divider:focus-visible span { background:var(--accent); }

@@ -111,6 +111,12 @@
     record(s, '拆分对读', scene.members, scene);
     s.scenes.splice(index, 1, ...[...scene.members].reverse().map(id => ({id:uid(s, 'scene'), members:[id], ratio:.5})));
   }
+  function swapPair(s, sceneId) {
+    const scene=s.scenes.find(x=>x.id===sceneId);
+    if(!scene || scene.members.length!==2) return false;
+    scene.members.reverse(); scene.ratio=1-scene.ratio;
+    record(s,'交换对读位置',scene.members,scene); return true;
+  }
   function closeWindow(s, id) {
     if (!get(s, id)) return;
     record(s, '关闭窗口', [id]); detach(s, id);
@@ -221,5 +227,5 @@
     if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id => !ids.includes(id)) || s.tabs.length > 3 || s.floating.length > 2 || s.scenes.some(x => x.members.length < 1 || x.members.length > 2)) throw Error('窗口层级不一致');
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,swapPair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);
