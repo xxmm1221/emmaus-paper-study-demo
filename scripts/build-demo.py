@@ -16,6 +16,14 @@ args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 destination = root / 'index.html'
 fragment = (root / 'src' / 'paper-study.html').read_text(encoding='utf-8')
+for marker, filename in [
+    ('__EMMAUS_WINDOW_CSS__', 'paper-study.css'),
+    ('__EMMAUS_WINDOW_MODEL__', 'window-model.js'),
+    ('__EMMAUS_WINDOW_APP__', 'paper-study.js'),
+]:
+    if fragment.count(marker) != 1:
+        raise RuntimeError(f'Expected exactly one {marker} placeholder.')
+    fragment = fragment.replace(marker, (root / 'src' / filename).read_text(encoding='utf-8'))
 metadata = (root / 'data' / 'books.json').read_text(encoding='utf-8')
 if fragment.count('__EMMAUS_BOOKS__') != 1:
     raise RuntimeError('Expected exactly one book metadata placeholder.')
@@ -46,9 +54,19 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 }
 </style>'''
 page = destination.read_text(encoding='utf-8')
+# The standalone website stores full local history, not a tiny conversation widget
+# summary. Keep the existing key/receipt protocol; quota failures remain visible.
+page = page.replace('16 * 1024', '8 * 1024 * 1024').replace('16 KiB', '8 MiB')
 page = page.replace("default-src 'none';", "default-src 'none'; connect-src 'self';", 1)
 page = page.replace('<html lang="en"', '<html lang="zh-CN"', 1)
-page = page.replace('</head>', outer_css + '\n</head>', 1)
+migration_backup = '''<script>
+try {
+  const key='codex:visualization-widget-state-v2:'+JSON.stringify([location.pathname,location.search]);
+  const old=localStorage.getItem(key),version=old&&JSON.parse(old)?.privateContent?.version;
+  if([3,4,5].includes(version)&&!localStorage.getItem(key+':before-v6'))localStorage.setItem(key+':before-v6',old);
+}catch(_){}
+</script>'''
+page = page.replace('</head>', outer_css + migration_backup + '\n</head>', 1)
 pattern = re.compile(r'(<iframe\b[^>]*\bdata-srcdoc=")(.*?)(")', re.DOTALL)
 match = pattern.search(page)
 if not match:
@@ -62,6 +80,10 @@ bridge = '''<script>
   const frame=document.getElementById('codex-visualization'),cache=new Map();
   window.addEventListener('message',async event=>{
     const request=event.data;
+    if(event.source===frame.contentWindow&&request?.type==='emmaus-export-request'&&request.data?.version===6){
+      const blob=new Blob([JSON.stringify(request.data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+      link.href=url;link.download='Emmaus-reading-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return;
+    }
     if(event.source!==frame.contentWindow||request?.type!=='emmaus-bible-request'||typeof request.id!=='string'||request.id.length>120||!Number.isInteger(request.book)||request.book<1||request.book>66)return;
     try {
       let pending=cache.get(request.book);
