@@ -169,3 +169,8 @@
 @media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important; } }
 
 #emmaus-paper-study .ep-root-directory .ep-directory-content { padding-bottom:var(--floating-space,24px); scroll-padding-bottom:var(--floating-space,24px); }
+
+/* A window keeps its paper color when it changes placement. Elevation, not a
+   sudden color swap, distinguishes floating windows from the main reading area. */
+#emmaus-paper-study .ep-sheet,#emmaus-paper-study .ep-sheet .ep-pane { background:var(--paper); }
+#emmaus-paper-study .ep-tab { background:var(--paper)!important; }

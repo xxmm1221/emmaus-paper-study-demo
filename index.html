@@ -2006,6 +2006,11 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 @media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important; } }
 
 #emmaus-paper-study .ep-root-directory .ep-directory-content { padding-bottom:var(--floating-space,24px); scroll-padding-bottom:var(--floating-space,24px); }
+
+/* A window keeps its paper color when it changes placement. Elevation, not a
+   sudden color swap, distinguishes floating windows from the main reading area. */
+#emmaus-paper-study .ep-sheet,#emmaus-paper-study .ep-sheet .ep-pane { background:var(--paper); }
+#emmaus-paper-study .ep-tab { background:var(--paper)!important; }
 &lt;/style&gt;
 &lt;script&gt;/* Window placement is independent of content. This module also runs in Node QA. */
 (function (global) {
@@ -2280,38 +2285,91 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   const scheduleSave = () =&gt; { clearTimeout(saveTimer); saveTimer = setTimeout(persist,220); };
   let motionOrigin = null, drawerTimer;
   const reduceMotion = () =&gt; matchMedia(&#x27;(prefers-reduced-motion: reduce)&#x27;).matches;
+  const windowMotions = new Set();
+  const snapshotProperties = (&#x27;display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance&#x27;).split(&#x27; &#x27;);
+  // Freeze the source appearance before reparenting: inherited colors, typography,
+  // scroll offsets and textarea content must travel with the original object.
+  function freezeSurface(node) {
+    const clone = node.cloneNode(true), scrolls = [];
+    const originals = [node,...node.querySelectorAll(&#x27;*&#x27;)], copies = [clone,...clone.querySelectorAll(&#x27;*&#x27;)];
+    originals.forEach((source,index) =&gt; {
+      const copy = copies[index], css = getComputedStyle(source);
+      for (const name of snapshotProperties) copy.style.setProperty(name,css.getPropertyValue(name));
+      copy.style.setProperty(&#x27;transition&#x27;,&#x27;none&#x27;,&#x27;important&#x27;); copy.style.setProperty(&#x27;animation&#x27;,&#x27;none&#x27;,&#x27;important&#x27;);
+      for (const attr of [...copy.attributes]) if (attr.name === &#x27;id&#x27; || attr.name === &#x27;class&#x27; || attr.name.startsWith(&#x27;data-&#x27;)) copy.removeAttribute(attr.name);
+      if (source instanceof HTMLTextAreaElement) copy.value = source.value;
+      if (source.scrollTop || source.scrollLeft) scrolls.push([copy,source.scrollTop,source.scrollLeft]);
+    });
+    Object.assign(clone.style,{position:&#x27;absolute&#x27;,inset:&#x27;0 auto auto 0&#x27;,margin:&#x27;0&#x27;,transform:&#x27;none&#x27;,visibility:&#x27;visible&#x27;,opacity:&#x27;1&#x27;,borderRadius:&#x27;0&#x27;,boxShadow:&#x27;none&#x27;,border:&#x27;0&#x27;,background:&#x27;transparent&#x27;});
+    return {clone,restore:() =&gt; scrolls.forEach(([n,y,x]) =&gt; { n.scrollTop=y; n.scrollLeft=x; })};
+  }
   function surfaces() {
     const result = new Map();
-    qa(&#x27;.ep-main .ep-pane,.ep-sheet:not([data-motion-ghost]),.ep-tabs .ep-tab&#x27;).forEach(node =&gt; {
+    qa(&#x27;.ep-main .ep-pane,.ep-sheet,.ep-tabs .ep-tab&#x27;).forEach(node =&gt; {
       const id = node.dataset.windowId || node.dataset.tab;
-      if (id) result.set(id,{node,rect:node.getBoundingClientRect()});
+      if (id) result.set(id,{node,rect:node.getBoundingClientRect(),radius:getComputedStyle(node).borderRadius,shadow:getComputedStyle(node).boxShadow});
     });
     return result;
   }
+  function finishWindowMotions() { for (const finish of [...windowMotions]) finish(); }
+  function flySurface(from, to, source, destination, target, id, retiring=false) {
+    const bounds = phone.getBoundingClientRect(), shell = document.createElement(&#x27;div&#x27;);
+    shell.dataset.motionGhost = id; shell.setAttribute(&#x27;aria-hidden&#x27;,&#x27;true&#x27;); shell.inert = true;
+    Object.assign(shell.style,{position:&#x27;absolute&#x27;,left:from.left-bounds.left-phone.clientLeft+&#x27;px&#x27;,top:from.top-bounds.top-phone.clientTop+&#x27;px&#x27;,width:from.width+&#x27;px&#x27;,height:from.height+&#x27;px&#x27;,overflow:&#x27;hidden&#x27;,pointerEvents:&#x27;none&#x27;,zIndex:retiring?6:12,background:&#x27;var(--paper)&#x27;,boxShadow:source?.shadow || &#x27;none&#x27;,borderRadius:source?.radius || &#x27;20px&#x27;,transformOrigin:&#x27;0 0&#x27;});
+    const oldLayer = source?.frozen, newLayer = destination?.frozen;
+    if (oldLayer) shell.append(oldLayer.clone);
+    if (newLayer) shell.append(newLayer.clone);
+    phone.append(shell); oldLayer?.restore(); newLayer?.restore();
+    const previousVisibility = target?.style.visibility;
+    if (target) target.style.visibility = &#x27;hidden&#x27;;
+    const duration = 540, easing = &#x27;cubic-bezier(.32,0,.2,1)&#x27;, animations = [];
+    const run = (node,frames,timing=easing) =&gt; { const a = node.animate(frames,{duration,easing:timing,fill:&#x27;both&#x27;}); animations.push(a); return a; };
+    // Geometry moves throughout; the original content remains legible until the
+    // object reaches its destination. No early dissolve / target-style flash.
+    const flight = run(shell,[{transform:&#x27;translate(0px,0px)&#x27;,width:from.width+&#x27;px&#x27;,height:from.height+&#x27;px&#x27;,borderRadius:source?.radius || &#x27;20px&#x27;,opacity:1},{transform:`translate(${to.left-from.left}px,${to.top-from.top}px)`,width:to.width+&#x27;px&#x27;,height:to.height+&#x27;px&#x27;,borderRadius:destination?.radius || &#x27;20px&#x27;,opacity:retiring?0:1}]);
+    if (oldLayer) run(oldLayer.clone,[{transform:&#x27;scale(1,1)&#x27;,transformOrigin:&#x27;0 0&#x27;,offset:0},{transform:`scale(${to.width/from.width})`,transformOrigin:&#x27;0 0&#x27;,offset:1}]);
+    // Keep source opaque for most of the journey; appearance changes only at arrival.
+    if (oldLayer &amp;&amp; newLayer) {
+      run(oldLayer.clone,[{opacity:1,offset:0},{opacity:1,offset:.72},{opacity:0,offset:1}],&#x27;linear&#x27;);
+      run(newLayer.clone,[{opacity:0,offset:0},{opacity:0,offset:.72},{opacity:1,offset:1}],&#x27;linear&#x27;);
+    }
+    if (newLayer) run(newLayer.clone,[{transform:`scale(${from.width/to.width})`,transformOrigin:&#x27;0 0&#x27;},{transform:&#x27;scale(1,1)&#x27;,transformOrigin:&#x27;0 0&#x27;}]);
+    let cleaned = false;
+    const finish = () =&gt; {
+      if (cleaned) return; cleaned = true;
+      animations.forEach(a=&gt;a.cancel()); shell.remove();
+      if (target) target.style.visibility = previousVisibility;
+      windowMotions.delete(finish);
+    };
+    windowMotions.add(finish); flight.finished.then(finish,finish);
+  }
   function animateWindows(before, origin) {
     if (reduceMotion()) return;
-    const after = surfaces(), options = {duration:460,easing:&#x27;cubic-bezier(.22,.8,.25,1)&#x27;};
-    after.forEach(({node,rect},id) =&gt; {
-      const from = before.get(id)?.rect || origin;
-      if (!from || !rect.width || !rect.height) return;
-      const dx = from.left-rect.left, dy = from.top-rect.top, sx = from.width/rect.width, sy = from.height/rect.height;
-      if (Math.abs(dx)+Math.abs(dy)+Math.abs(sx-1)+Math.abs(sy-1) &lt; .5) return;
-      node.animate([{transformOrigin:&#x27;0 0&#x27;,transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,opacity:before.has(id)?1:.35,borderRadius:&#x27;22px&#x27;}, {transformOrigin:&#x27;0 0&#x27;,transform:&#x27;none&#x27;,opacity:1,borderRadius:getComputedStyle(node).borderRadius}],options);
+    const after = surfaces();
+    // Freeze all destinations before hiding any ancestor/child.
+    after.forEach(item =&gt; { item.frozen = freezeSurface(item.node); });
+    after.forEach((item,id) =&gt; {
+      const previous = before.get(id), from = previous?.rect || origin, to = item.rect;
+      if (!from || !to.width || !to.height) return;
+      if (previous &amp;&amp; Math.abs(from.left-to.left)+Math.abs(from.top-to.top)+Math.abs(from.width-to.width)+Math.abs(from.height-to.height)&lt;1) return;
+      flySurface(from,to,previous,item,item.node,id);
     });
-    before.forEach(({rect,ghost},id) =&gt; {
+    before.forEach((item,id) =&gt; {
       if (after.has(id)) return;
-      const bounds = phone.getBoundingClientRect(), scene = state.scenes.find(s =&gt; s.members.includes(id));
-      const target = scene &amp;&amp; q(`[data-resume=&quot;${scene.id}&quot;]`);
-      const to = target &amp;&amp; !q(&#x27;.ep-drawer&#x27;).hidden ? target.getBoundingClientRect() : {left:bounds.left+20,top:bounds.top+24,width:44,height:44};
-      Object.assign(ghost.style,{position:&#x27;absolute&#x27;,margin:&#x27;0&#x27;,inset:&#x27;auto&#x27;,left:rect.left-bounds.left+&#x27;px&#x27;,top:rect.top-bounds.top+&#x27;px&#x27;,width:rect.width+&#x27;px&#x27;,height:rect.height+&#x27;px&#x27;,minHeight:&#x27;0&#x27;,maxHeight:&#x27;none&#x27;,zIndex:30,pointerEvents:&#x27;none&#x27;,transformOrigin:&#x27;0 0&#x27;});
-      ghost.dataset.motionGhost = &#x27;true&#x27;; ghost.setAttribute(&#x27;aria-hidden&#x27;,&#x27;true&#x27;); ghost.inert = true; phone.append(ghost);
-      ghost.animate([{transform:&#x27;none&#x27;,opacity:1},{transform:`translate(${to.left-rect.left}px,${to.top-rect.top}px) scale(${to.width/rect.width},${to.height/rect.height})`,opacity:0}],options).finished.catch(()=&gt;{}).finally(()=&gt;ghost.remove());
+      // A covered scene goes behind the incoming window, not into an unrelated
+      // corner. Closed windows leave toward the lower edge.
+      const retained = state.scenes.some(s=&gt;s.members.includes(id));
+      const to = {...item.rect,left:item.rect.left-(retained?24:0),top:item.rect.top+(retained?0:60),width:item.rect.width,height:item.rect.height};
+      flySurface(item.rect,to,item,null,null,id,true);
     });
   }
   function change(callback, origin = motionOrigin) {
-    capture(); flushNotes(); qa(&#x27;[data-motion-ghost]&#x27;).forEach(n=&gt;n.remove()); phone.getAnimations({subtree:true}).forEach(a =&gt; { if (a.effect?.target?.closest?.(&#x27;.ep-main,.ep-floating-layer&#x27;)) a.finish(); }); const before = surfaces();
-    before.forEach(item =&gt; { item.ghost = item.node.cloneNode(true); });
-    selection = null; closeMenu(); callback(); render(); animateWindows(before,origin); persist(false);
+    finishWindowMotions(); capture(); flushNotes(); const before = surfaces();
+    if (!reduceMotion()) before.forEach(item =&gt; { item.frozen = freezeSurface(item.node); });
+    selection = null; closeMenu(); callback(); render();
+    // Restore scroll before taking destination snapshots, not during a scaled frame.
+    panes.forEach((node,id) =&gt; { if(node.isConnected &amp;&amp; node.dataset.ready===&#x27;true&#x27;) restorePosition(node,M.get(state,id)); });
+    animateWindows(before,origin); persist(false);
   }
 
   function setQuiet(node,quiet) {
@@ -2450,6 +2508,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     }
   }
   function drawer(open) {
+    finishWindowMotions();
     if (open) { capture(); flushNotes(); closeMenu(); if (directory) closeDirectory(); q(&#x27;.ep-history-panel&#x27;).hidden = true; lastModalFocus = document.activeElement; renderSaved(); }
     clearTimeout(drawerTimer);
     const el = q(&#x27;.ep-drawer&#x27;), wasHidden = el.hidden;

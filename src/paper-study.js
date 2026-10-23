@@ -61,38 +61,91 @@
   const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist,220); };
   let motionOrigin = null, drawerTimer;
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const windowMotions = new Set();
+  const snapshotProperties = ('display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance').split(' ');
+  // Freeze the source appearance before reparenting: inherited colors, typography,
+  // scroll offsets and textarea content must travel with the original object.
+  function freezeSurface(node) {
+    const clone = node.cloneNode(true), scrolls = [];
+    const originals = [node,...node.querySelectorAll('*')], copies = [clone,...clone.querySelectorAll('*')];
+    originals.forEach((source,index) => {
+      const copy = copies[index], css = getComputedStyle(source);
+      for (const name of snapshotProperties) copy.style.setProperty(name,css.getPropertyValue(name));
+      copy.style.setProperty('transition','none','important'); copy.style.setProperty('animation','none','important');
+      for (const attr of [...copy.attributes]) if (attr.name === 'id' || attr.name === 'class' || attr.name.startsWith('data-')) copy.removeAttribute(attr.name);
+      if (source instanceof HTMLTextAreaElement) copy.value = source.value;
+      if (source.scrollTop || source.scrollLeft) scrolls.push([copy,source.scrollTop,source.scrollLeft]);
+    });
+    Object.assign(clone.style,{position:'absolute',inset:'0 auto auto 0',margin:'0',transform:'none',visibility:'visible',opacity:'1',borderRadius:'0',boxShadow:'none',border:'0',background:'transparent'});
+    return {clone,restore:() => scrolls.forEach(([n,y,x]) => { n.scrollTop=y; n.scrollLeft=x; })};
+  }
   function surfaces() {
     const result = new Map();
-    qa('.ep-main .ep-pane,.ep-sheet:not([data-motion-ghost]),.ep-tabs .ep-tab').forEach(node => {
+    qa('.ep-main .ep-pane,.ep-sheet,.ep-tabs .ep-tab').forEach(node => {
       const id = node.dataset.windowId || node.dataset.tab;
-      if (id) result.set(id,{node,rect:node.getBoundingClientRect()});
+      if (id) result.set(id,{node,rect:node.getBoundingClientRect(),radius:getComputedStyle(node).borderRadius,shadow:getComputedStyle(node).boxShadow});
     });
     return result;
   }
+  function finishWindowMotions() { for (const finish of [...windowMotions]) finish(); }
+  function flySurface(from, to, source, destination, target, id, retiring=false) {
+    const bounds = phone.getBoundingClientRect(), shell = document.createElement('div');
+    shell.dataset.motionGhost = id; shell.setAttribute('aria-hidden','true'); shell.inert = true;
+    Object.assign(shell.style,{position:'absolute',left:from.left-bounds.left-phone.clientLeft+'px',top:from.top-bounds.top-phone.clientTop+'px',width:from.width+'px',height:from.height+'px',overflow:'hidden',pointerEvents:'none',zIndex:retiring?6:12,background:'var(--paper)',boxShadow:source?.shadow || 'none',borderRadius:source?.radius || '20px',transformOrigin:'0 0'});
+    const oldLayer = source?.frozen, newLayer = destination?.frozen;
+    if (oldLayer) shell.append(oldLayer.clone);
+    if (newLayer) shell.append(newLayer.clone);
+    phone.append(shell); oldLayer?.restore(); newLayer?.restore();
+    const previousVisibility = target?.style.visibility;
+    if (target) target.style.visibility = 'hidden';
+    const duration = 540, easing = 'cubic-bezier(.32,0,.2,1)', animations = [];
+    const run = (node,frames,timing=easing) => { const a = node.animate(frames,{duration,easing:timing,fill:'both'}); animations.push(a); return a; };
+    // Geometry moves throughout; the original content remains legible until the
+    // object reaches its destination. No early dissolve / target-style flash.
+    const flight = run(shell,[{transform:'translate(0px,0px)',width:from.width+'px',height:from.height+'px',borderRadius:source?.radius || '20px',opacity:1},{transform:`translate(${to.left-from.left}px,${to.top-from.top}px)`,width:to.width+'px',height:to.height+'px',borderRadius:destination?.radius || '20px',opacity:retiring?0:1}]);
+    if (oldLayer) run(oldLayer.clone,[{transform:'scale(1,1)',transformOrigin:'0 0',offset:0},{transform:`scale(${to.width/from.width})`,transformOrigin:'0 0',offset:1}]);
+    // Keep source opaque for most of the journey; appearance changes only at arrival.
+    if (oldLayer && newLayer) {
+      run(oldLayer.clone,[{opacity:1,offset:0},{opacity:1,offset:.72},{opacity:0,offset:1}],'linear');
+      run(newLayer.clone,[{opacity:0,offset:0},{opacity:0,offset:.72},{opacity:1,offset:1}],'linear');
+    }
+    if (newLayer) run(newLayer.clone,[{transform:`scale(${from.width/to.width})`,transformOrigin:'0 0'},{transform:'scale(1,1)',transformOrigin:'0 0'}]);
+    let cleaned = false;
+    const finish = () => {
+      if (cleaned) return; cleaned = true;
+      animations.forEach(a=>a.cancel()); shell.remove();
+      if (target) target.style.visibility = previousVisibility;
+      windowMotions.delete(finish);
+    };
+    windowMotions.add(finish); flight.finished.then(finish,finish);
+  }
   function animateWindows(before, origin) {
     if (reduceMotion()) return;
-    const after = surfaces(), options = {duration:460,easing:'cubic-bezier(.22,.8,.25,1)'};
-    after.forEach(({node,rect},id) => {
-      const from = before.get(id)?.rect || origin;
-      if (!from || !rect.width || !rect.height) return;
-      const dx = from.left-rect.left, dy = from.top-rect.top, sx = from.width/rect.width, sy = from.height/rect.height;
-      if (Math.abs(dx)+Math.abs(dy)+Math.abs(sx-1)+Math.abs(sy-1) < .5) return;
-      node.animate([{transformOrigin:'0 0',transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,opacity:before.has(id)?1:.35,borderRadius:'22px'}, {transformOrigin:'0 0',transform:'none',opacity:1,borderRadius:getComputedStyle(node).borderRadius}],options);
+    const after = surfaces();
+    // Freeze all destinations before hiding any ancestor/child.
+    after.forEach(item => { item.frozen = freezeSurface(item.node); });
+    after.forEach((item,id) => {
+      const previous = before.get(id), from = previous?.rect || origin, to = item.rect;
+      if (!from || !to.width || !to.height) return;
+      if (previous && Math.abs(from.left-to.left)+Math.abs(from.top-to.top)+Math.abs(from.width-to.width)+Math.abs(from.height-to.height)<1) return;
+      flySurface(from,to,previous,item,item.node,id);
     });
-    before.forEach(({rect,ghost},id) => {
+    before.forEach((item,id) => {
       if (after.has(id)) return;
-      const bounds = phone.getBoundingClientRect(), scene = state.scenes.find(s => s.members.includes(id));
-      const target = scene && q(`[data-resume="${scene.id}"]`);
-      const to = target && !q('.ep-drawer').hidden ? target.getBoundingClientRect() : {left:bounds.left+20,top:bounds.top+24,width:44,height:44};
-      Object.assign(ghost.style,{position:'absolute',margin:'0',inset:'auto',left:rect.left-bounds.left+'px',top:rect.top-bounds.top+'px',width:rect.width+'px',height:rect.height+'px',minHeight:'0',maxHeight:'none',zIndex:30,pointerEvents:'none',transformOrigin:'0 0'});
-      ghost.dataset.motionGhost = 'true'; ghost.setAttribute('aria-hidden','true'); ghost.inert = true; phone.append(ghost);
-      ghost.animate([{transform:'none',opacity:1},{transform:`translate(${to.left-rect.left}px,${to.top-rect.top}px) scale(${to.width/rect.width},${to.height/rect.height})`,opacity:0}],options).finished.catch(()=>{}).finally(()=>ghost.remove());
+      // A covered scene goes behind the incoming window, not into an unrelated
+      // corner. Closed windows leave toward the lower edge.
+      const retained = state.scenes.some(s=>s.members.includes(id));
+      const to = {...item.rect,left:item.rect.left-(retained?24:0),top:item.rect.top+(retained?0:60),width:item.rect.width,height:item.rect.height};
+      flySurface(item.rect,to,item,null,null,id,true);
     });
   }
   function change(callback, origin = motionOrigin) {
-    capture(); flushNotes(); qa('[data-motion-ghost]').forEach(n=>n.remove()); phone.getAnimations({subtree:true}).forEach(a => { if (a.effect?.target?.closest?.('.ep-main,.ep-floating-layer')) a.finish(); }); const before = surfaces();
-    before.forEach(item => { item.ghost = item.node.cloneNode(true); });
-    selection = null; closeMenu(); callback(); render(); animateWindows(before,origin); persist(false);
+    finishWindowMotions(); capture(); flushNotes(); const before = surfaces();
+    if (!reduceMotion()) before.forEach(item => { item.frozen = freezeSurface(item.node); });
+    selection = null; closeMenu(); callback(); render();
+    // Restore scroll before taking destination snapshots, not during a scaled frame.
+    panes.forEach((node,id) => { if(node.isConnected && node.dataset.ready==='true') restorePosition(node,M.get(state,id)); });
+    animateWindows(before,origin); persist(false);
   }
 
   function setQuiet(node,quiet) {
@@ -231,6 +284,7 @@
     }
   }
   function drawer(open) {
+    finishWindowMotions();
     if (open) { capture(); flushNotes(); closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; lastModalFocus = document.activeElement; renderSaved(); }
     clearTimeout(drawerTimer);
     const el = q('.ep-drawer'), wasHidden = el.hidden;
