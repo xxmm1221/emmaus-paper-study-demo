@@ -19,6 +19,7 @@ fragment = (root / 'src' / 'paper-study.html').read_text(encoding='utf-8')
 for marker, filename in [
     ('__EMMAUS_WINDOW_CSS__', 'paper-study.css'),
     ('__EMMAUS_WINDOW_MODEL__', 'window-model.js'),
+    ('__EMMAUS_REFERENCES__', 'scripture-references.js'),
     ('__EMMAUS_WINDOW_APP__', 'paper-study.js'),
 ]:
     if fragment.count(marker) != 1:

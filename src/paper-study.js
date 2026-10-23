@@ -8,7 +8,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
   const button = (act,label,name,id,cls='ep-icon') => `<button type="button" class="${cls}" data-act="${act}"${id ? ` data-id="${esc(id)}"` : ''} aria-label="${esc(label)}">${name ? icon(name) : ''}${cls === 'ep-text' ? esc(label) : ''}</button>`;
-  const title = w => w?.kind === 'reading' ? `${info(M.page(w)?.book)?.name || '读经'} ${M.page(w)?.chapter || ''}` : w?.kind === 'note' ? (state.notes[w.contentId]?.text.split('\n').find(t => t.trim())?.replace(/^>\s*/, '').slice(0,18) || '研读笔记') : '益处，不止于顺境';
+  const title = w => w?.kind === 'reading' ? `${info(M.page(w)?.book)?.name || '读经'} ${M.page(w)?.chapter || ''}` : w?.kind === 'note' ? (state.notes[w.contentId]?.text.split('\n').find(t => t.trim())?.replace(/^>\s*/, '').slice(0,18) || '研读笔记') : w?.citation?.book === 45 && w.citation.chapter === 8 && [28,29].includes(w.citation.verse) ? '益处，不止于顺境' : `${info(w?.citation?.book)?.name || '经文'} ${w?.citation?.chapter || ''}${w?.citation?.verse ? ':'+w.citation.verse : ''} · 研读`;
   const sceneTitle = scene => scene.members.map(id => title(M.get(state,id))).join(' · ');
   let state, drawerOpen = false, directory = null, rootCatalog = {book:null,testament:'旧约'}, directorySerial = 0, requestId = 0;
   let menuTarget = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = 'all', historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
@@ -42,7 +42,7 @@
         const p = M.page(w); p.scroll = scroll.scrollTop;
         const r = scroll.getBoundingClientRect(), verse = [...scroll.querySelectorAll('.ep-verse')].find(v => v.getBoundingClientRect().bottom > r.top + 8);
         if (verse) p.anchor = {verse:Number(verse.dataset.verse),offset:verse.getBoundingClientRect().top - r.top};
-      } else { w.scroll = scroll.scrollTop; if (w.kind === 'note') w.outerScroll = node.querySelector('.ep-scroll').scrollTop; }
+      } else { if (!scroll.hidden) w.scroll = scroll.scrollTop; if (w.kind === 'note') w.outerScroll = node.querySelector('.ep-scroll').scrollTop; }
     });
   }
   function flushNotes() { clearTimeout(noteTimer); for (const id of dirtyNotes) M.commitNote(state,id); dirtyNotes.clear(); }
@@ -181,8 +181,36 @@
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions = node.querySelector('.ep-pane-actions'), selected = selection?.id === w.id;
-    actions.innerHTML = (selected ? `<span class="ep-selected-ref">${esc(info(selection.book)?.abbreviation)} ${selection.chapter}:${selection.verse}</span>` : '') + button('open-reference','研读','book-open',w.id,'ep-text') + button('open-note',selected ? '记笔记' : '笔记','pen-line',w.id,'ep-text');
+    const actions = node.querySelector('.ep-pane-actions'), c = w.kind === 'reading' && citation(w.id);
+    actions.hidden = !c;
+    actions.innerHTML = c ? `<span class="ep-selected-ref">${esc(info(c.book)?.abbreviation)} ${c.chapter}:${c.verse}</span>` + button('open-reference','研读','book-open',w.id,'ep-text') + button('open-note','记笔记','pen-line',w.id,'ep-text') : '';
+  }
+  function renderNote(node,w) {
+    const preview = node.querySelector('.ep-note-preview'); if (!preview) return;
+    const text = state.notes[w.contentId].text, refs = globalThis.EmmausReferences.parse(text,books);
+    let html = '', offset = 0;
+    for (const r of refs) {
+      html += esc(text.slice(offset,r.start)) + `<button type="button" class="ep-scripture-link" data-act="note-scripture" data-id="${esc(w.id)}" data-book="${r.book}" data-chapter="${r.chapter}" data-first="${r.verse || ''}" data-last="${r.endVerse || ''}" aria-label="打开经文浮窗：${esc(r.label)}">${esc(r.label)}</button>`;
+      offset = r.end;
+    }
+    preview.innerHTML = html + esc(text.slice(offset)) || '<span class="ep-note-placeholder">暂无正文，点击“编辑笔记”开始记录。</span>';
+    const editing = node.dataset.editing === 'true';
+    preview.hidden = editing; node.querySelector('textarea').hidden = !editing;
+    const toggle = node.querySelector('[data-act="note-edit"]'); toggle.textContent = editing ? '完成编辑' : '编辑笔记'; toggle.setAttribute('aria-pressed',String(editing));
+  }
+  let referenceRequest = 0;
+  async function openNoteScripture(b) {
+    const id=b.dataset.id, w=M.get(state,id), origin=b.getBoundingClientRect(), token=++referenceRequest;
+    const book=Number(b.dataset.book), chapter=Number(b.dataset.chapter), verse=Number(b.dataset.first)||null, endVerse=Number(b.dataset.last)||verse;
+    const originalText = w?.kind === 'note' && state.notes[w.contentId].text;
+    if (w?.kind !== 'note' || !info(book) || chapter<1 || chapter>info(book).chapterCount) return;
+    try {
+      const data = await loadBook(book), verses=data.chapters[chapter-1];
+      if(token!==referenceRequest || !b.isConnected || state.notes[w.contentId].text!==originalText) return;
+      if(verse && (!verses.some(v=>v[0]===verse)||!verses.some(v=>v[0]===endVerse))) { announce('引用的节号不存在，请检查笔记'); return; }
+      const sourceScene=M.top(state)?.members.includes(id) ? M.top(state) : null;
+      change(()=>{ M.openNew(state,'reading',{book,chapter,verse,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene && M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
+    } catch (_) { announce('经文暂未载入，请再点一次引用'); }
   }
   function ensurePane(w) {
     let node = panes.get(w.id);
@@ -213,18 +241,23 @@
     } else if (!node.dataset.ready) {
       node.dataset.ready = 'true';
       if (w.kind === 'note') {
-        scroll.className = 'ep-scroll ep-note'; scroll.innerHTML = '<span class="ep-kicker">个人笔记</span><h2>研读笔记</h2><textarea aria-label="研读笔记正文" placeholder="此刻，你读到了什么？"></textarea><small class="ep-note-status">自动保存 · 保留编辑版本</small>';
+        scroll.className = 'ep-scroll ep-note'; scroll.innerHTML = '<div class="ep-note-heading"><span class="ep-kicker">个人笔记</span><button type="button" class="ep-note-edit ep-text" data-act="note-edit">编辑笔记</button></div><div class="ep-note-preview" aria-label="笔记阅读正文"></div><textarea hidden aria-label="研读笔记正文" placeholder="此刻，你读到了什么？"></textarea><small class="ep-note-status">自动保存 · 保留编辑版本</small>';
+        scroll.querySelector('[data-act="note-edit"]').dataset.id = w.id;
         const area = scroll.querySelector('textarea'); area.value = state.notes[w.contentId].text; watchScroll(node,area);
         area.addEventListener('input',() => {
           state.notes[w.contentId].text = area.value; dirtyNotes.add(w.contentId);
-          panes.forEach((other,id) => { if (id !== w.id && M.get(state,id)?.contentId === w.contentId) { const a = other.querySelector('textarea'); if (a && a.value !== area.value) a.value = area.value; } });
+          panes.forEach((other,id) => { if (id !== w.id && M.get(state,id)?.contentId === w.contentId) { const a = other.querySelector('textarea'); if (a && a.value !== area.value) a.value = area.value; renderNote(other,M.get(state,id)); } });
           clearTimeout(noteTimer); noteTimer = setTimeout(() => { flushNotes(); persist(); },650); scheduleSave();
         });
         area.addEventListener('blur',() => { flushNotes(); persist(); });
       } else {
-        scroll.className = 'ep-scroll ep-reference'; scroll.innerHTML = `<span class="ep-kicker">研读札记 · 罗马书 8:28</span><h2>益处，不止于顺境。</h2><p class="ep-lead">“万事互相效力”，不是说每一件事本身都是好的。</p><p>把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。</p><div class="ep-thought"><span class="ep-kicker">带着这个问题，再读一遍</span><p>我盼望的，是处境改变，<br>还是生命也被更新？</p></div><button class="ep-write-link" data-act="reference-reading" data-id="${esc(w.id)}">${icon('book-open')}再读罗马书 8:29${icon('arrow-up-right')}</button><button class="ep-write-link" data-act="open-note" data-id="${esc(w.id)}">${icon('pen-line')}写下我的回应</button><small class="ep-source-credit">原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。</small>`;
+        const c=w.citation, supported=c?.book===45 && c.chapter===8 && [28,29].includes(c.verse);
+        scroll.className = 'ep-scroll ep-reference';
+        if (!supported) scroll.innerHTML = `<span class="ep-kicker">研读 · ${esc(info(c?.book)?.name)} ${c?.chapter || ''}:${c?.verse || ''}</span><h2>经文研读</h2><p>${esc(c?.words || '')}</p><p class="ep-empty">本节暂无已接入的研读资料。</p><small class="ep-source-credit">当前为交互原型，不生成或套用其他经文的注释。</small><button class="ep-write-link" data-act="open-note" data-id="${esc(w.id)}">${icon('pen-line')}针对这节经文记笔记</button>`;
+        else scroll.innerHTML = `<span class="ep-kicker">研读札记 · 罗马书 8:${c.verse}</span><h2>益处，不止于顺境。</h2><p class="ep-lead">“万事互相效力”，不是说每一件事本身都是好的。</p><p>把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。</p><div class="ep-thought"><span class="ep-kicker">带着这个问题，再读一遍</span><p>我盼望的，是处境改变，<br>还是生命也被更新？</p></div><button class="ep-write-link" data-act="reference-reading" data-id="${esc(w.id)}">${icon('book-open')}再读罗马书 8:29${icon('arrow-up-right')}</button><button class="ep-write-link" data-act="open-note" data-id="${esc(w.id)}">${icon('pen-line')}写下我的回应</button><small class="ep-source-credit">原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。</small>`;
       }
     }
+    if (w.kind === 'note') renderNote(node,w);
     paneActions(node,w); return node;
   }
   function render() {
@@ -262,7 +295,7 @@
   function closeMenu() { menuTarget = null; q('.ep-popover').hidden = q('.ep-menu-scrim').hidden = true; }
   function menu(id,anchor,isScene=false) {
     closeMenu(); menuTarget = id; const panel = q('.ep-popover'), w = M.get(state,id);
-    panel.innerHTML = isScene ? button('unpair','拆分为两个主窗口','rows-2',id,'ep-text') + button('close-scene','关闭整个组合','x',id,'ep-text') : (state.floating === id ? button('promote','最大化','maximize-2',id,'ep-text') + button('minimize','收为悬浮标签','minus',id,'ep-text') : button('move-float','变为浮窗','panel-bottom',''+id,'ep-text') + button('pin','固定此处为浮窗','pin',id,'ep-text')) + button('open-note','新建笔记浮窗','pen-line',id,'ep-text') + button('close-window','关闭窗口','x',id,'ep-text');
+    panel.innerHTML = isScene ? button('unpair','拆分为两个主窗口','rows-2',id,'ep-text') + button('close-scene','关闭整个组合','x',id,'ep-text') : (state.floating === id ? button('promote','最大化','maximize-2',id,'ep-text') + button('minimize','收为悬浮标签','minus',id,'ep-text') : button('move-float','变为浮窗','panel-bottom',''+id,'ep-text') + button('pin','固定此处为浮窗','pin',id,'ep-text')) + (w?.kind === 'reading' && citation(id) ? button('open-note','为选中经文记笔记','pen-line',id,'ep-text') : '') + button('close-window','关闭窗口','x',id,'ep-text');
     if (w?.kind === 'reference') panel.insertAdjacentHTML('beforeend',button('reference-reading','打开所引经文','book-open',id,'ep-text'));
     if (w?.kind === 'reading') panel.insertAdjacentHTML('beforeend',button('prev','上一章','chevron-left',id,'ep-text') + button('next','下一章','chevron-right',id,'ep-text'));
     panel.hidden = q('.ep-menu-scrim').hidden = false; const a = anchor.getBoundingClientRect(), p = phone.getBoundingClientRect();
@@ -326,11 +359,12 @@
   }
   function citation(id) {
     if (selection?.id === id) return {...selection};
-    const w = M.get(state,id); if (w?.kind === 'reading') { const p = M.page(w), verse = p.selected; if (verse) return {book:p.book,chapter:p.chapter,verse,words:cache.get(p.book)?.chapters[p.chapter-1]?.find(v => v[0] === verse)?.[1] || ''}; }
+    const w = M.get(state,id); if (w?.kind === 'reading') { const p = M.page(w), verse = p.selected; if (verse) return {book:p.book,chapter:p.chapter,verse,words:cache.get(p.book)?.chapters[p.chapter-1]?.find(v => v[0] === verse)?.[1] || ''}; return null; }
     return w?.citation || null;
   }
   function newNote(id) {
-    const c = citation(id), text = c ? `> ${info(c.book)?.name} ${c.chapter}:${c.verse}\n> ${c.words || ''}\n\n` : '';
+    const c = citation(id); if (!c?.verse) { announce('请先选中一节经文'); return; }
+    const text = c ? `> ${info(c.book)?.name} ${c.chapter}:${c.verse}\n> ${c.words || ''}\n\n` : '';
     change(() => M.openNew(state,'note',{citation:c,text}));
   }
   function showHistory() { drawer(false); closeMenu(); capture(); flushNotes(); persist(); q('.ep-history-panel').hidden = false; historyLimit = 50; renderHistory(); updateInert(); q('[data-act="history-close"]').focus({preventScroll:true}); }
@@ -370,11 +404,18 @@
       case 'reading-directory': openDirectory(id); break;
       case 'directory-close': closeDirectory(); break;
       case 'directory-back': if (catalog) { catalog.book = null; catalog.busy = false; catalog.request = (catalog.request || 0)+1; renderDirectory(isRoot ? q('.ep-main') : q('.ep-directory'),catalog,isRoot); } break;
+      case 'note-edit': {
+        const node=panes.get(id), w=M.get(state,id); if(w?.kind!=='note') break; referenceRequest++;
+        node.dataset.editing=String(node.dataset.editing!=='true'); renderNote(node,w);
+        if(node.dataset.editing==='true') node.querySelector('textarea').focus({preventScroll:true});
+        else { flushNotes(); persist(); } break;
+      }
+      case 'note-scripture': openNoteScripture(b); break;
       case 'open-note': drawer(false); newNote(id); break;
       case 'open-reference': {
         const c = citation(id);
-        if (c && (c.book !== 45 || c.chapter !== 8 || ![28,29].includes(c.verse))) { announce('此原型仅提供罗马书 8:28–29 的演示札记'); break; }
-        change(() => M.openNew(state,'reference',{citation:c || {book:45,chapter:8,verse:28}})); break;
+        if (!c?.verse) { announce('请先选中一节经文'); break; }
+        change(() => M.openNew(state,'reference',{citation:c})); break;
       }
       case 'reference-reading': change(() => M.openNew(state,'reading',{book:45,chapter:8,verse:29})); break;
       case 'promote': change(() => M.promote(state,id)); break;

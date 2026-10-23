@@ -2011,6 +2011,23 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
    sudden color swap, distinguishes floating windows from the main reading area. */
 #emmaus-paper-study .ep-sheet,#emmaus-paper-study .ep-sheet .ep-pane { background:var(--paper); }
 #emmaus-paper-study .ep-tab { background:var(--paper)!important; }
+/* Boundaries keep a stable paper color while elevation and outlines convey placement. */
+#emmaus-paper-study .ep-phone { --edge:light-dark(#8b987e,#819571);--gutter:light-dark(#e0e4d6,#121911); }
+#emmaus-paper-study .ep-paired .ep-scene-body { background:var(--gutter);padding:0 5px 5px; }
+#emmaus-paper-study .ep-paired .ep-pane { border:1px solid var(--edge);border-radius:12px;box-shadow:0 2px 5px var(--shadow); }
+#emmaus-paper-study .ep-divider { background:var(--gutter); }
+#emmaus-paper-study .ep-divider span { width:44px;height:4px;background:var(--accent); }
+#emmaus-paper-study .ep-sheet { border:1px solid var(--edge);box-shadow:0 -4px 12px light-dark(#25351b24,#0008),0 12px 36px light-dark(#25351b45,#000c); }
+#emmaus-paper-study .ep-sheet-bar { border-bottom:1px solid var(--line); }
+#emmaus-paper-study .ep-note-preview { white-space:pre-wrap;overflow-wrap:anywhere;font:400 18px/1.85 var(--serif);padding-bottom:10px; }
+#emmaus-paper-study .ep-note-edit { align-self:flex-end;color:var(--accent);margin-top:-8px;flex-shrink:0; }
+#emmaus-paper-study .ep-note-placeholder { color:var(--muted); }
+#emmaus-paper-study .ep-scripture-link { display:inline;padding:3px 1px;color:var(--accent);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;font:inherit;border-radius:3px; }
+#emmaus-paper-study .ep-scripture-link:active { background:var(--soft); }
+#emmaus-paper-study .ep-note textarea { flex:1 0 160px; }
+
+#emmaus-paper-study .ep-note-heading { display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:8px; }
+#emmaus-paper-study .ep-note-heading .ep-note-edit { margin:0; }
 &lt;/style&gt;
 &lt;script&gt;/* Window placement is independent of content. This module also runs in Node QA. */
 (function (global) {
@@ -2222,6 +2239,23 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);
 &lt;/script&gt;
+&lt;script&gt;/* Parse explicit Chinese book references only; a bare time such as 8:28 is not scripture. */
+(function(global){
+  function parse(text,books){
+    const aliases=new Map(); for(const b of books)for(const name of [b.name,b.abbreviation])aliases.set(name,b);
+    const names=[...aliases.keys()].sort((a,b)=&gt;b.length-a.length).map(s=&gt;s.replace(/[.*+?^${}()|[\]\\]/g,&#x27;\\$&amp;&#x27;));
+    const re=new RegExp(&#x27;(&#x27;+names.join(&#x27;|&#x27;)+&#x27;)\\s*(\\d+)(?:\\s*[:：]\\s*(\\d+)(?:\\s*[-–—]\\s*(\\d+))?|\\s*章(?:\\s*(\\d+)\\s*节)?)?&#x27;,&#x27;g&#x27;);
+    const result=[];for(const m of text.matchAll(re)){
+      const b=aliases.get(m[1]),chapter=Number(m[2]),verse=Number(m[3]||m[5])||null,endVerse=Number(m[4])||verse;
+      if(chapter&lt;1||chapter&gt;b.chapterCount || ((m[3]||m[5])&amp;&amp;!verse) || endVerse&lt;verse)continue;
+      if(!verse&amp;&amp;!m[0].includes(&#x27;章&#x27;)&amp;&amp;m[1]!==b.name)continue;
+      if(/^[\d:：\-–—]/.test(text.slice(m.index+m[0].length)))continue;
+      result.push({book:b.number,chapter,verse,endVerse,label:m[0],start:m.index,end:m.index+m[0].length});
+    }return result;
+  }
+  global.EmmausReferences={parse};
+})(globalThis);
+&lt;/script&gt;
 &lt;script&gt;(function () {
   &#x27;use strict&#x27;;
   const M = globalThis.EmmausWindows, root = document.getElementById(&#x27;emmaus-paper-study&#x27;), phone = root.querySelector(&#x27;.ep-phone&#x27;);
@@ -2232,7 +2266,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   const esc = value =&gt; String(value ?? &#x27;&#x27;).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g, c =&gt; ({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[c]));
   const icon = name =&gt; `&lt;i data-lucide=&quot;${name}&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;`;
   const button = (act,label,name,id,cls=&#x27;ep-icon&#x27;) =&gt; `&lt;button type=&quot;button&quot; class=&quot;${cls}&quot; data-act=&quot;${act}&quot;${id ? ` data-id=&quot;${esc(id)}&quot;` : &#x27;&#x27;} aria-label=&quot;${esc(label)}&quot;&gt;${name ? icon(name) : &#x27;&#x27;}${cls === &#x27;ep-text&#x27; ? esc(label) : &#x27;&#x27;}&lt;/button&gt;`;
-  const title = w =&gt; w?.kind === &#x27;reading&#x27; ? `${info(M.page(w)?.book)?.name || &#x27;读经&#x27;} ${M.page(w)?.chapter || &#x27;&#x27;}` : w?.kind === &#x27;note&#x27; ? (state.notes[w.contentId]?.text.split(&#x27;\n&#x27;).find(t =&gt; t.trim())?.replace(/^&gt;\s*/, &#x27;&#x27;).slice(0,18) || &#x27;研读笔记&#x27;) : &#x27;益处，不止于顺境&#x27;;
+  const title = w =&gt; w?.kind === &#x27;reading&#x27; ? `${info(M.page(w)?.book)?.name || &#x27;读经&#x27;} ${M.page(w)?.chapter || &#x27;&#x27;}` : w?.kind === &#x27;note&#x27; ? (state.notes[w.contentId]?.text.split(&#x27;\n&#x27;).find(t =&gt; t.trim())?.replace(/^&gt;\s*/, &#x27;&#x27;).slice(0,18) || &#x27;研读笔记&#x27;) : w?.citation?.book === 45 &amp;&amp; w.citation.chapter === 8 &amp;&amp; [28,29].includes(w.citation.verse) ? &#x27;益处，不止于顺境&#x27; : `${info(w?.citation?.book)?.name || &#x27;经文&#x27;} ${w?.citation?.chapter || &#x27;&#x27;}${w?.citation?.verse ? &#x27;:&#x27;+w.citation.verse : &#x27;&#x27;} · 研读`;
   const sceneTitle = scene =&gt; scene.members.map(id =&gt; title(M.get(state,id))).join(&#x27; · &#x27;);
   let state, drawerOpen = false, directory = null, rootCatalog = {book:null,testament:&#x27;旧约&#x27;}, directorySerial = 0, requestId = 0;
   let menuTarget = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = &#x27;all&#x27;, historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
@@ -2266,7 +2300,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
         const p = M.page(w); p.scroll = scroll.scrollTop;
         const r = scroll.getBoundingClientRect(), verse = [...scroll.querySelectorAll(&#x27;.ep-verse&#x27;)].find(v =&gt; v.getBoundingClientRect().bottom &gt; r.top + 8);
         if (verse) p.anchor = {verse:Number(verse.dataset.verse),offset:verse.getBoundingClientRect().top - r.top};
-      } else { w.scroll = scroll.scrollTop; if (w.kind === &#x27;note&#x27;) w.outerScroll = node.querySelector(&#x27;.ep-scroll&#x27;).scrollTop; }
+      } else { if (!scroll.hidden) w.scroll = scroll.scrollTop; if (w.kind === &#x27;note&#x27;) w.outerScroll = node.querySelector(&#x27;.ep-scroll&#x27;).scrollTop; }
     });
   }
   function flushNotes() { clearTimeout(noteTimer); for (const id of dirtyNotes) M.commitNote(state,id); dirtyNotes.clear(); }
@@ -2405,8 +2439,36 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions = node.querySelector(&#x27;.ep-pane-actions&#x27;), selected = selection?.id === w.id;
-    actions.innerHTML = (selected ? `&lt;span class=&quot;ep-selected-ref&quot;&gt;${esc(info(selection.book)?.abbreviation)} ${selection.chapter}:${selection.verse}&lt;/span&gt;` : &#x27;&#x27;) + button(&#x27;open-reference&#x27;,&#x27;研读&#x27;,&#x27;book-open&#x27;,w.id,&#x27;ep-text&#x27;) + button(&#x27;open-note&#x27;,selected ? &#x27;记笔记&#x27; : &#x27;笔记&#x27;,&#x27;pen-line&#x27;,w.id,&#x27;ep-text&#x27;);
+    const actions = node.querySelector(&#x27;.ep-pane-actions&#x27;), c = w.kind === &#x27;reading&#x27; &amp;&amp; citation(w.id);
+    actions.hidden = !c;
+    actions.innerHTML = c ? `&lt;span class=&quot;ep-selected-ref&quot;&gt;${esc(info(c.book)?.abbreviation)} ${c.chapter}:${c.verse}&lt;/span&gt;` + button(&#x27;open-reference&#x27;,&#x27;研读&#x27;,&#x27;book-open&#x27;,w.id,&#x27;ep-text&#x27;) + button(&#x27;open-note&#x27;,&#x27;记笔记&#x27;,&#x27;pen-line&#x27;,w.id,&#x27;ep-text&#x27;) : &#x27;&#x27;;
+  }
+  function renderNote(node,w) {
+    const preview = node.querySelector(&#x27;.ep-note-preview&#x27;); if (!preview) return;
+    const text = state.notes[w.contentId].text, refs = globalThis.EmmausReferences.parse(text,books);
+    let html = &#x27;&#x27;, offset = 0;
+    for (const r of refs) {
+      html += esc(text.slice(offset,r.start)) + `&lt;button type=&quot;button&quot; class=&quot;ep-scripture-link&quot; data-act=&quot;note-scripture&quot; data-id=&quot;${esc(w.id)}&quot; data-book=&quot;${r.book}&quot; data-chapter=&quot;${r.chapter}&quot; data-first=&quot;${r.verse || &#x27;&#x27;}&quot; data-last=&quot;${r.endVerse || &#x27;&#x27;}&quot; aria-label=&quot;打开经文浮窗：${esc(r.label)}&quot;&gt;${esc(r.label)}&lt;/button&gt;`;
+      offset = r.end;
+    }
+    preview.innerHTML = html + esc(text.slice(offset)) || &#x27;&lt;span class=&quot;ep-note-placeholder&quot;&gt;暂无正文，点击“编辑笔记”开始记录。&lt;/span&gt;&#x27;;
+    const editing = node.dataset.editing === &#x27;true&#x27;;
+    preview.hidden = editing; node.querySelector(&#x27;textarea&#x27;).hidden = !editing;
+    const toggle = node.querySelector(&#x27;[data-act=&quot;note-edit&quot;]&#x27;); toggle.textContent = editing ? &#x27;完成编辑&#x27; : &#x27;编辑笔记&#x27;; toggle.setAttribute(&#x27;aria-pressed&#x27;,String(editing));
+  }
+  let referenceRequest = 0;
+  async function openNoteScripture(b) {
+    const id=b.dataset.id, w=M.get(state,id), origin=b.getBoundingClientRect(), token=++referenceRequest;
+    const book=Number(b.dataset.book), chapter=Number(b.dataset.chapter), verse=Number(b.dataset.first)||null, endVerse=Number(b.dataset.last)||verse;
+    const originalText = w?.kind === &#x27;note&#x27; &amp;&amp; state.notes[w.contentId].text;
+    if (w?.kind !== &#x27;note&#x27; || !info(book) || chapter&lt;1 || chapter&gt;info(book).chapterCount) return;
+    try {
+      const data = await loadBook(book), verses=data.chapters[chapter-1];
+      if(token!==referenceRequest || !b.isConnected || state.notes[w.contentId].text!==originalText) return;
+      if(verse &amp;&amp; (!verses.some(v=&gt;v[0]===verse)||!verses.some(v=&gt;v[0]===endVerse))) { announce(&#x27;引用的节号不存在，请检查笔记&#x27;); return; }
+      const sourceScene=M.top(state)?.members.includes(id) ? M.top(state) : null;
+      change(()=&gt;{ M.openNew(state,&#x27;reading&#x27;,{book,chapter,verse,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene &amp;&amp; M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
+    } catch (_) { announce(&#x27;经文暂未载入，请再点一次引用&#x27;); }
   }
   function ensurePane(w) {
     let node = panes.get(w.id);
@@ -2437,18 +2499,23 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     } else if (!node.dataset.ready) {
       node.dataset.ready = &#x27;true&#x27;;
       if (w.kind === &#x27;note&#x27;) {
-        scroll.className = &#x27;ep-scroll ep-note&#x27;; scroll.innerHTML = &#x27;&lt;span class=&quot;ep-kicker&quot;&gt;个人笔记&lt;/span&gt;&lt;h2&gt;研读笔记&lt;/h2&gt;&lt;textarea aria-label=&quot;研读笔记正文&quot; placeholder=&quot;此刻，你读到了什么？&quot;&gt;&lt;/textarea&gt;&lt;small class=&quot;ep-note-status&quot;&gt;自动保存 · 保留编辑版本&lt;/small&gt;&#x27;;
+        scroll.className = &#x27;ep-scroll ep-note&#x27;; scroll.innerHTML = &#x27;&lt;div class=&quot;ep-note-heading&quot;&gt;&lt;span class=&quot;ep-kicker&quot;&gt;个人笔记&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;ep-note-edit ep-text&quot; data-act=&quot;note-edit&quot;&gt;编辑笔记&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;ep-note-preview&quot; aria-label=&quot;笔记阅读正文&quot;&gt;&lt;/div&gt;&lt;textarea hidden aria-label=&quot;研读笔记正文&quot; placeholder=&quot;此刻，你读到了什么？&quot;&gt;&lt;/textarea&gt;&lt;small class=&quot;ep-note-status&quot;&gt;自动保存 · 保留编辑版本&lt;/small&gt;&#x27;;
+        scroll.querySelector(&#x27;[data-act=&quot;note-edit&quot;]&#x27;).dataset.id = w.id;
         const area = scroll.querySelector(&#x27;textarea&#x27;); area.value = state.notes[w.contentId].text; watchScroll(node,area);
         area.addEventListener(&#x27;input&#x27;,() =&gt; {
           state.notes[w.contentId].text = area.value; dirtyNotes.add(w.contentId);
-          panes.forEach((other,id) =&gt; { if (id !== w.id &amp;&amp; M.get(state,id)?.contentId === w.contentId) { const a = other.querySelector(&#x27;textarea&#x27;); if (a &amp;&amp; a.value !== area.value) a.value = area.value; } });
+          panes.forEach((other,id) =&gt; { if (id !== w.id &amp;&amp; M.get(state,id)?.contentId === w.contentId) { const a = other.querySelector(&#x27;textarea&#x27;); if (a &amp;&amp; a.value !== area.value) a.value = area.value; renderNote(other,M.get(state,id)); } });
           clearTimeout(noteTimer); noteTimer = setTimeout(() =&gt; { flushNotes(); persist(); },650); scheduleSave();
         });
         area.addEventListener(&#x27;blur&#x27;,() =&gt; { flushNotes(); persist(); });
       } else {
-        scroll.className = &#x27;ep-scroll ep-reference&#x27;; scroll.innerHTML = `&lt;span class=&quot;ep-kicker&quot;&gt;研读札记 · 罗马书 8:28&lt;/span&gt;&lt;h2&gt;益处，不止于顺境。&lt;/h2&gt;&lt;p class=&quot;ep-lead&quot;&gt;“万事互相效力”，不是说每一件事本身都是好的。&lt;/p&gt;&lt;p&gt;把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。&lt;/p&gt;&lt;div class=&quot;ep-thought&quot;&gt;&lt;span class=&quot;ep-kicker&quot;&gt;带着这个问题，再读一遍&lt;/span&gt;&lt;p&gt;我盼望的，是处境改变，&lt;br&gt;还是生命也被更新？&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;ep-write-link&quot; data-act=&quot;reference-reading&quot; data-id=&quot;${esc(w.id)}&quot;&gt;${icon(&#x27;book-open&#x27;)}再读罗马书 8:29${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;button class=&quot;ep-write-link&quot; data-act=&quot;open-note&quot; data-id=&quot;${esc(w.id)}&quot;&gt;${icon(&#x27;pen-line&#x27;)}写下我的回应&lt;/button&gt;&lt;small class=&quot;ep-source-credit&quot;&gt;原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。&lt;/small&gt;`;
+        const c=w.citation, supported=c?.book===45 &amp;&amp; c.chapter===8 &amp;&amp; [28,29].includes(c.verse);
+        scroll.className = &#x27;ep-scroll ep-reference&#x27;;
+        if (!supported) scroll.innerHTML = `&lt;span class=&quot;ep-kicker&quot;&gt;研读 · ${esc(info(c?.book)?.name)} ${c?.chapter || &#x27;&#x27;}:${c?.verse || &#x27;&#x27;}&lt;/span&gt;&lt;h2&gt;经文研读&lt;/h2&gt;&lt;p&gt;${esc(c?.words || &#x27;&#x27;)}&lt;/p&gt;&lt;p class=&quot;ep-empty&quot;&gt;本节暂无已接入的研读资料。&lt;/p&gt;&lt;small class=&quot;ep-source-credit&quot;&gt;当前为交互原型，不生成或套用其他经文的注释。&lt;/small&gt;&lt;button class=&quot;ep-write-link&quot; data-act=&quot;open-note&quot; data-id=&quot;${esc(w.id)}&quot;&gt;${icon(&#x27;pen-line&#x27;)}针对这节经文记笔记&lt;/button&gt;`;
+        else scroll.innerHTML = `&lt;span class=&quot;ep-kicker&quot;&gt;研读札记 · 罗马书 8:${c.verse}&lt;/span&gt;&lt;h2&gt;益处，不止于顺境。&lt;/h2&gt;&lt;p class=&quot;ep-lead&quot;&gt;“万事互相效力”，不是说每一件事本身都是好的。&lt;/p&gt;&lt;p&gt;把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。&lt;/p&gt;&lt;div class=&quot;ep-thought&quot;&gt;&lt;span class=&quot;ep-kicker&quot;&gt;带着这个问题，再读一遍&lt;/span&gt;&lt;p&gt;我盼望的，是处境改变，&lt;br&gt;还是生命也被更新？&lt;/p&gt;&lt;/div&gt;&lt;button class=&quot;ep-write-link&quot; data-act=&quot;reference-reading&quot; data-id=&quot;${esc(w.id)}&quot;&gt;${icon(&#x27;book-open&#x27;)}再读罗马书 8:29${icon(&#x27;arrow-up-right&#x27;)}&lt;/button&gt;&lt;button class=&quot;ep-write-link&quot; data-act=&quot;open-note&quot; data-id=&quot;${esc(w.id)}&quot;&gt;${icon(&#x27;pen-line&#x27;)}写下我的回应&lt;/button&gt;&lt;small class=&quot;ep-source-credit&quot;&gt;原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。&lt;/small&gt;`;
       }
     }
+    if (w.kind === &#x27;note&#x27;) renderNote(node,w);
     paneActions(node,w); return node;
   }
   function render() {
@@ -2486,7 +2553,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function closeMenu() { menuTarget = null; q(&#x27;.ep-popover&#x27;).hidden = q(&#x27;.ep-menu-scrim&#x27;).hidden = true; }
   function menu(id,anchor,isScene=false) {
     closeMenu(); menuTarget = id; const panel = q(&#x27;.ep-popover&#x27;), w = M.get(state,id);
-    panel.innerHTML = isScene ? button(&#x27;unpair&#x27;,&#x27;拆分为两个主窗口&#x27;,&#x27;rows-2&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;close-scene&#x27;,&#x27;关闭整个组合&#x27;,&#x27;x&#x27;,id,&#x27;ep-text&#x27;) : (state.floating === id ? button(&#x27;promote&#x27;,&#x27;最大化&#x27;,&#x27;maximize-2&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;minimize&#x27;,&#x27;收为悬浮标签&#x27;,&#x27;minus&#x27;,id,&#x27;ep-text&#x27;) : button(&#x27;move-float&#x27;,&#x27;变为浮窗&#x27;,&#x27;panel-bottom&#x27;,&#x27;&#x27;+id,&#x27;ep-text&#x27;) + button(&#x27;pin&#x27;,&#x27;固定此处为浮窗&#x27;,&#x27;pin&#x27;,id,&#x27;ep-text&#x27;)) + button(&#x27;open-note&#x27;,&#x27;新建笔记浮窗&#x27;,&#x27;pen-line&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;close-window&#x27;,&#x27;关闭窗口&#x27;,&#x27;x&#x27;,id,&#x27;ep-text&#x27;);
+    panel.innerHTML = isScene ? button(&#x27;unpair&#x27;,&#x27;拆分为两个主窗口&#x27;,&#x27;rows-2&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;close-scene&#x27;,&#x27;关闭整个组合&#x27;,&#x27;x&#x27;,id,&#x27;ep-text&#x27;) : (state.floating === id ? button(&#x27;promote&#x27;,&#x27;最大化&#x27;,&#x27;maximize-2&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;minimize&#x27;,&#x27;收为悬浮标签&#x27;,&#x27;minus&#x27;,id,&#x27;ep-text&#x27;) : button(&#x27;move-float&#x27;,&#x27;变为浮窗&#x27;,&#x27;panel-bottom&#x27;,&#x27;&#x27;+id,&#x27;ep-text&#x27;) + button(&#x27;pin&#x27;,&#x27;固定此处为浮窗&#x27;,&#x27;pin&#x27;,id,&#x27;ep-text&#x27;)) + (w?.kind === &#x27;reading&#x27; &amp;&amp; citation(id) ? button(&#x27;open-note&#x27;,&#x27;为选中经文记笔记&#x27;,&#x27;pen-line&#x27;,id,&#x27;ep-text&#x27;) : &#x27;&#x27;) + button(&#x27;close-window&#x27;,&#x27;关闭窗口&#x27;,&#x27;x&#x27;,id,&#x27;ep-text&#x27;);
     if (w?.kind === &#x27;reference&#x27;) panel.insertAdjacentHTML(&#x27;beforeend&#x27;,button(&#x27;reference-reading&#x27;,&#x27;打开所引经文&#x27;,&#x27;book-open&#x27;,id,&#x27;ep-text&#x27;));
     if (w?.kind === &#x27;reading&#x27;) panel.insertAdjacentHTML(&#x27;beforeend&#x27;,button(&#x27;prev&#x27;,&#x27;上一章&#x27;,&#x27;chevron-left&#x27;,id,&#x27;ep-text&#x27;) + button(&#x27;next&#x27;,&#x27;下一章&#x27;,&#x27;chevron-right&#x27;,id,&#x27;ep-text&#x27;));
     panel.hidden = q(&#x27;.ep-menu-scrim&#x27;).hidden = false; const a = anchor.getBoundingClientRect(), p = phone.getBoundingClientRect();
@@ -2550,11 +2617,12 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   }
   function citation(id) {
     if (selection?.id === id) return {...selection};
-    const w = M.get(state,id); if (w?.kind === &#x27;reading&#x27;) { const p = M.page(w), verse = p.selected; if (verse) return {book:p.book,chapter:p.chapter,verse,words:cache.get(p.book)?.chapters[p.chapter-1]?.find(v =&gt; v[0] === verse)?.[1] || &#x27;&#x27;}; }
+    const w = M.get(state,id); if (w?.kind === &#x27;reading&#x27;) { const p = M.page(w), verse = p.selected; if (verse) return {book:p.book,chapter:p.chapter,verse,words:cache.get(p.book)?.chapters[p.chapter-1]?.find(v =&gt; v[0] === verse)?.[1] || &#x27;&#x27;}; return null; }
     return w?.citation || null;
   }
   function newNote(id) {
-    const c = citation(id), text = c ? `&gt; ${info(c.book)?.name} ${c.chapter}:${c.verse}\n&gt; ${c.words || &#x27;&#x27;}\n\n` : &#x27;&#x27;;
+    const c = citation(id); if (!c?.verse) { announce(&#x27;请先选中一节经文&#x27;); return; }
+    const text = c ? `&gt; ${info(c.book)?.name} ${c.chapter}:${c.verse}\n&gt; ${c.words || &#x27;&#x27;}\n\n` : &#x27;&#x27;;
     change(() =&gt; M.openNew(state,&#x27;note&#x27;,{citation:c,text}));
   }
   function showHistory() { drawer(false); closeMenu(); capture(); flushNotes(); persist(); q(&#x27;.ep-history-panel&#x27;).hidden = false; historyLimit = 50; renderHistory(); updateInert(); q(&#x27;[data-act=&quot;history-close&quot;]&#x27;).focus({preventScroll:true}); }
@@ -2594,11 +2662,18 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       case &#x27;reading-directory&#x27;: openDirectory(id); break;
       case &#x27;directory-close&#x27;: closeDirectory(); break;
       case &#x27;directory-back&#x27;: if (catalog) { catalog.book = null; catalog.busy = false; catalog.request = (catalog.request || 0)+1; renderDirectory(isRoot ? q(&#x27;.ep-main&#x27;) : q(&#x27;.ep-directory&#x27;),catalog,isRoot); } break;
+      case &#x27;note-edit&#x27;: {
+        const node=panes.get(id), w=M.get(state,id); if(w?.kind!==&#x27;note&#x27;) break; referenceRequest++;
+        node.dataset.editing=String(node.dataset.editing!==&#x27;true&#x27;); renderNote(node,w);
+        if(node.dataset.editing===&#x27;true&#x27;) node.querySelector(&#x27;textarea&#x27;).focus({preventScroll:true});
+        else { flushNotes(); persist(); } break;
+      }
+      case &#x27;note-scripture&#x27;: openNoteScripture(b); break;
       case &#x27;open-note&#x27;: drawer(false); newNote(id); break;
       case &#x27;open-reference&#x27;: {
         const c = citation(id);
-        if (c &amp;&amp; (c.book !== 45 || c.chapter !== 8 || ![28,29].includes(c.verse))) { announce(&#x27;此原型仅提供罗马书 8:28–29 的演示札记&#x27;); break; }
-        change(() =&gt; M.openNew(state,&#x27;reference&#x27;,{citation:c || {book:45,chapter:8,verse:28}})); break;
+        if (!c?.verse) { announce(&#x27;请先选中一节经文&#x27;); break; }
+        change(() =&gt; M.openNew(state,&#x27;reference&#x27;,{citation:c})); break;
       }
       case &#x27;reference-reading&#x27;: change(() =&gt; M.openNew(state,&#x27;reading&#x27;,{book:45,chapter:8,verse:29})); break;
       case &#x27;promote&#x27;: change(() =&gt; M.promote(state,id)); break;

@@ -174,3 +174,20 @@
    sudden color swap, distinguishes floating windows from the main reading area. */
 #emmaus-paper-study .ep-sheet,#emmaus-paper-study .ep-sheet .ep-pane { background:var(--paper); }
 #emmaus-paper-study .ep-tab { background:var(--paper)!important; }
+/* Boundaries keep a stable paper color while elevation and outlines convey placement. */
+#emmaus-paper-study .ep-phone { --edge:light-dark(#8b987e,#819571);--gutter:light-dark(#e0e4d6,#121911); }
+#emmaus-paper-study .ep-paired .ep-scene-body { background:var(--gutter);padding:0 5px 5px; }
+#emmaus-paper-study .ep-paired .ep-pane { border:1px solid var(--edge);border-radius:12px;box-shadow:0 2px 5px var(--shadow); }
+#emmaus-paper-study .ep-divider { background:var(--gutter); }
+#emmaus-paper-study .ep-divider span { width:44px;height:4px;background:var(--accent); }
+#emmaus-paper-study .ep-sheet { border:1px solid var(--edge);box-shadow:0 -4px 12px light-dark(#25351b24,#0008),0 12px 36px light-dark(#25351b45,#000c); }
+#emmaus-paper-study .ep-sheet-bar { border-bottom:1px solid var(--line); }
+#emmaus-paper-study .ep-note-preview { white-space:pre-wrap;overflow-wrap:anywhere;font:400 18px/1.85 var(--serif);padding-bottom:10px; }
+#emmaus-paper-study .ep-note-edit { align-self:flex-end;color:var(--accent);margin-top:-8px;flex-shrink:0; }
+#emmaus-paper-study .ep-note-placeholder { color:var(--muted); }
+#emmaus-paper-study .ep-scripture-link { display:inline;padding:3px 1px;color:var(--accent);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;font:inherit;border-radius:3px; }
+#emmaus-paper-study .ep-scripture-link:active { background:var(--soft); }
+#emmaus-paper-study .ep-note textarea { flex:1 0 160px; }
+
+#emmaus-paper-study .ep-note-heading { display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:8px; }
+#emmaus-paper-study .ep-note-heading .ep-note-edit { margin:0; }
