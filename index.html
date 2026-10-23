@@ -2011,14 +2011,34 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
    sudden color swap, distinguishes floating windows from the main reading area. */
 #emmaus-paper-study .ep-sheet,#emmaus-paper-study .ep-sheet .ep-pane { background:var(--paper); }
 #emmaus-paper-study .ep-tab { background:var(--paper)!important; }
-/* Boundaries keep a stable paper color while elevation and outlines convey placement. */
-#emmaus-paper-study .ep-phone { --edge:light-dark(#8b987e,#819571);--gutter:light-dark(#e0e4d6,#121911); }
-#emmaus-paper-study .ep-paired .ep-scene-body { background:var(--gutter);padding:0 5px 5px; }
-#emmaus-paper-study .ep-paired .ep-pane { border:1px solid var(--edge);border-radius:12px;box-shadow:0 2px 5px var(--shadow); }
-#emmaus-paper-study .ep-divider { background:var(--gutter); }
-#emmaus-paper-study .ep-divider span { width:44px;height:4px;background:var(--accent); }
-#emmaus-paper-study .ep-sheet { border:1px solid var(--edge);box-shadow:0 -4px 12px light-dark(#25351b24,#0008),0 12px 36px light-dark(#25351b45,#000c); }
-#emmaus-paper-study .ep-sheet-bar { border-bottom:1px solid var(--line); }
+/* Editorial surfaces: a quiet seam for split reading; elevation for overlays.
+   The paper color is shared across placements so morphs retain their identity. */
+#emmaus-paper-study .ep-phone {
+  --seam:light-dark(#b9bcaf,#555d50);
+  --grip:light-dark(#8c9484,#8c9881);
+  --hairline:light-dark(#414a2f20,#eff3dc20);
+  --float-shadow:0 18px 48px light-dark(#242c202b,#0008),0 3px 12px light-dark(#242c2017,#0006),0 0 0 1px var(--hairline);
+}
+#emmaus-paper-study .ep-paired .ep-scene-body { background:var(--paper);padding:0; }
+#emmaus-paper-study .ep-paired .ep-pane { border:0;border-radius:0;box-shadow:none; }
+#emmaus-paper-study .ep-divider { position:relative;isolation:isolate;background:var(--paper); }
+#emmaus-paper-study .ep-divider::before { content:&quot;&quot;;position:absolute;left:20px;right:20px;top:50%;height:1px;background:var(--seam); }
+#emmaus-paper-study .ep-divider span { position:relative;width:30px;height:3px;background:var(--grip);border-radius:2px;box-shadow:0 0 0 9px var(--paper); }
+#emmaus-paper-study .ep-divider:focus-visible { outline-offset:-5px; }
+#emmaus-paper-study .ep-paired .ep-pane-head { padding:0 12px; }
+#emmaus-paper-study .ep-paired .ep-scroll { mask-image:linear-gradient(to bottom,#000 calc(100% - 16px),transparent); }
+#emmaus-paper-study .ep-pane-title { font-weight:500;color:var(--ink); }
+#emmaus-paper-study .ep-sheet { left:12px;right:12px;border:0;border-radius:22px;box-shadow:var(--float-shadow); }
+#emmaus-paper-study .ep-sheet-bar { position:relative;min-height:46px;padding:0 8px 0 18px;gap:1px;border-bottom:0; }
+#emmaus-paper-study .ep-sheet-rule {position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--hairline); }
+#emmaus-paper-study .ep-sheet-bar .ep-text { color:var(--muted);font-size:11px; }
+#emmaus-paper-study .ep-sheet-bar .ep-icon { color:var(--muted); }
+#emmaus-paper-study .ep-handle { gap:8px;font-size:11px;letter-spacing:.8px; }
+#emmaus-paper-study .ep-handle svg { display:none; }
+#emmaus-paper-study .ep-handle-mark {width:20px;height:3px;border-radius:3px;background:var(--grip);opacity:.65;flex-shrink:0; }
+#emmaus-paper-study .ep-sheet .ep-pane-head { padding-left:10px;padding-right:10px; }
+#emmaus-paper-study .ep-pane-actions { border:0;box-shadow:0 3px 18px light-dark(#303b2414,#0005),0 0 0 1px var(--hairline); }
+#emmaus-paper-study .ep-tab { border:0!important;border-radius:12px 0 0 12px;box-shadow:-2px 3px 12px light-dark(#303b2417,#0005),0 0 0 1px var(--hairline); }
 #emmaus-paper-study .ep-note-preview { white-space:pre-wrap;overflow-wrap:anywhere;font:400 18px/1.85 var(--serif);padding-bottom:10px; }
 #emmaus-paper-study .ep-note-edit { align-self:flex-end;color:var(--accent);margin-top:-8px;flex-shrink:0; }
 #emmaus-paper-study .ep-note-placeholder { color:var(--muted); }
@@ -2320,7 +2340,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   let motionOrigin = null, drawerTimer;
   const reduceMotion = () =&gt; matchMedia(&#x27;(prefers-reduced-motion: reduce)&#x27;).matches;
   const windowMotions = new Set();
-  const snapshotProperties = (&#x27;display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance&#x27;).split(&#x27; &#x27;);
+  const snapshotProperties = (&#x27;display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance mask-image&#x27;).split(&#x27; &#x27;);
   // Freeze the source appearance before reparenting: inherited colors, typography,
   // scroll offsets and textarea content must travel with the original object.
   function freezeSurface(node) {
@@ -2538,7 +2558,8 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       if (sheet?.dataset.windowId !== w.id) { sheet = document.createElement(&#x27;article&#x27;); sheet.className = &#x27;ep-sheet&#x27;; sheet.dataset.windowId = w.id; sheet.setAttribute(&#x27;aria-label&#x27;,&#x27;临时阅读浮窗&#x27;); sheet.dataset.presentation = &#x27;floating&#x27;; slot.replaceChildren(sheet); }
       sheet.style.height = clamp((w.height || .4) * phone.clientHeight,205,phone.clientHeight-24) + &#x27;px&#x27;;
       let bar = sheet.querySelector(&#x27;.ep-sheet-bar&#x27;); if (!bar) { bar = document.createElement(&#x27;header&#x27;); bar.className = &#x27;ep-sheet-bar&#x27;; sheet.prepend(bar); }
-      bar.innerHTML = `&lt;button class=&quot;ep-handle&quot; data-id=&quot;${esc(w.id)}&quot; aria-label=&quot;调整浮窗高度&quot; type=&quot;button&quot;&gt;${icon(&#x27;grip-horizontal&#x27;)}&lt;span&gt;临时参考&lt;/span&gt;&lt;/button&gt;` + button(&#x27;pair&#x27;,&#x27;对读&#x27;,&#x27;rows-2&#x27;,w.id,&#x27;ep-text&#x27;) + button(&#x27;promote&#x27;,&#x27;最大化&#x27;,&#x27;maximize-2&#x27;,w.id) + button(&#x27;minimize&#x27;,&#x27;收为悬浮标签&#x27;,&#x27;minus&#x27;,w.id) + button(&#x27;pane-menu&#x27;,&#x27;浮窗更多操作&#x27;,&#x27;ellipsis&#x27;,w.id);
+      bar.innerHTML = `&lt;button class=&quot;ep-handle&quot; data-id=&quot;${esc(w.id)}&quot; aria-label=&quot;调整浮窗高度&quot; type=&quot;button&quot;&gt;&lt;span class=&quot;ep-handle-mark&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&lt;span&gt;${w.kind === &#x27;reading&#x27; ? &#x27;经文&#x27; : w.kind === &#x27;note&#x27; ? &#x27;笔记&#x27; : &#x27;研读&#x27;}&lt;/span&gt;&lt;/button&gt;` + button(&#x27;pair&#x27;,&#x27;对读&#x27;,&#x27;rows-2&#x27;,w.id,&#x27;ep-text&#x27;) + button(&#x27;promote&#x27;,&#x27;最大化&#x27;,&#x27;maximize-2&#x27;,w.id) + button(&#x27;minimize&#x27;,&#x27;收为悬浮标签&#x27;,&#x27;minus&#x27;,w.id) + button(&#x27;pane-menu&#x27;,&#x27;浮窗更多操作&#x27;,&#x27;ellipsis&#x27;,w.id);
+      bar.insertAdjacentHTML(&#x27;beforeend&#x27;,&#x27;&lt;span class=&quot;ep-sheet-rule&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;&#x27;);
       bar.querySelector(&#x27;[data-act=&quot;pair&quot;]&#x27;).disabled = !scene || scene.members.length !== 1;
       sheet.append(ensurePane(w));
     } else slot.replaceChildren();

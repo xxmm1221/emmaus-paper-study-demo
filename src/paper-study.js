@@ -62,7 +62,7 @@
   let motionOrigin = null, drawerTimer;
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const windowMotions = new Set();
-  const snapshotProperties = ('display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance').split(' ');
+  const snapshotProperties = ('display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance mask-image').split(' ');
   // Freeze the source appearance before reparenting: inherited colors, typography,
   // scroll offsets and textarea content must travel with the original object.
   function freezeSurface(node) {
@@ -280,7 +280,8 @@
       if (sheet?.dataset.windowId !== w.id) { sheet = document.createElement('article'); sheet.className = 'ep-sheet'; sheet.dataset.windowId = w.id; sheet.setAttribute('aria-label','临时阅读浮窗'); sheet.dataset.presentation = 'floating'; slot.replaceChildren(sheet); }
       sheet.style.height = clamp((w.height || .4) * phone.clientHeight,205,phone.clientHeight-24) + 'px';
       let bar = sheet.querySelector('.ep-sheet-bar'); if (!bar) { bar = document.createElement('header'); bar.className = 'ep-sheet-bar'; sheet.prepend(bar); }
-      bar.innerHTML = `<button class="ep-handle" data-id="${esc(w.id)}" aria-label="调整浮窗高度" type="button">${icon('grip-horizontal')}<span>临时参考</span></button>` + button('pair','对读','rows-2',w.id,'ep-text') + button('promote','最大化','maximize-2',w.id) + button('minimize','收为悬浮标签','minus',w.id) + button('pane-menu','浮窗更多操作','ellipsis',w.id);
+      bar.innerHTML = `<button class="ep-handle" data-id="${esc(w.id)}" aria-label="调整浮窗高度" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span>${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + button('pair','对读','rows-2',w.id,'ep-text') + button('promote','最大化','maximize-2',w.id) + button('minimize','收为悬浮标签','minus',w.id) + button('pane-menu','浮窗更多操作','ellipsis',w.id);
+      bar.insertAdjacentHTML('beforeend','<span class="ep-sheet-rule" aria-hidden="true"></span>');
       bar.querySelector('[data-act="pair"]').disabled = !scene || scene.members.length !== 1;
       sheet.append(ensurePane(w));
     } else slot.replaceChildren();
