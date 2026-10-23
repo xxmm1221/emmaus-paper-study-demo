@@ -2113,25 +2113,29 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       record(s, &#x27;标签回收&#x27;, [oldest.id]);
     }
   }
-  function openFloat(s, id, action = &#x27;打开浮窗&#x27;) {
+  function openFloat(s, id, action = &#x27;打开浮窗&#x27;, sourceWindowId = null) {
     const w = get(s, id);
     if (!w || s.floating === id) return;
     // Release a reopened tab before parking the previous float (no spurious LRU eviction).
     s.tabs = s.tabs.filter(t =&gt; t.id !== id);
-    // One floating slot: every incoming window parks its predecessor as a tab,
-    // regardless of whether the main scene is single, paired, or the directory.
-    if (s.floating) minimize(s);
+    // Placement depends on this action&#x27;s origin, never the background layout.
+    // A child of the current float keeps its source maximized behind it.
+    // An unrelated entrant (including tab restoration / moving a main pane) parks it.
+    if (s.floating) {
+      if (sourceWindowId === s.floating) promote(s, s.floating, &#x27;衍生来源浮窗最大化&#x27;);
+      else minimize(s);
+    }
     detach(s, id); s.floating = id; w.lastOpened = tick(s);
     record(s, action, [id]);
   }
-  function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id); return w; }
+  function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id, &#x27;打开浮窗&#x27;, options?.sourceWindowId); return w; }
   // Independent creation belongs to the main stack; derived content uses openNew.
   function openPrimary(s, kind, options) { const w = create(s, kind, options); promote(s, w.id, &#x27;目录新建阅读&#x27;); return w; }
   function pin(s, id) {
     const source = get(s, id); if (!source) return;
     const sourceScene = top(s)?.members.includes(id) ? top(s) : null;
     const w = copy(source); w.id = uid(s, &#x27;window&#x27;); w.lastOpened = s.clock;
-    s.windows.push(w); openFloat(s, w.id, &#x27;固定此处&#x27;);
+    s.windows.push(w); openFloat(s, w.id, &#x27;固定此处&#x27;, id);
     if (sourceScene &amp;&amp; top(s)?.id !== sourceScene.id) resume(s, sourceScene.id);
     return w;
   }
@@ -2486,7 +2490,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       if(token!==referenceRequest || !b.isConnected || state.notes[w.contentId].text!==originalText) return;
       if(verse &amp;&amp; (!verses.some(v=&gt;v[0]===verse)||!verses.some(v=&gt;v[0]===endVerse))) { announce(&#x27;引用的节号不存在，请检查笔记&#x27;); return; }
       const sourceScene=M.top(state)?.members.includes(id) ? M.top(state) : null;
-      change(()=&gt;{ M.openNew(state,&#x27;reading&#x27;,{book,chapter,verse,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene &amp;&amp; M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
+      change(()=&gt;{ M.openNew(state,&#x27;reading&#x27;,{book,chapter,verse,sourceWindowId:id,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene &amp;&amp; M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
     } catch (_) { announce(&#x27;经文暂未载入，请再点一次引用&#x27;); }
   }
   function ensurePane(w) {
@@ -2643,7 +2647,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function newNote(id) {
     const c = citation(id); if (!c?.verse) { announce(&#x27;请先选中一节经文&#x27;); return; }
     const text = c ? `&gt; ${info(c.book)?.name} ${c.chapter}:${c.verse}\n&gt; ${c.words || &#x27;&#x27;}\n\n` : &#x27;&#x27;;
-    change(() =&gt; M.openNew(state,&#x27;note&#x27;,{citation:c,text}));
+    change(() =&gt; M.openNew(state,&#x27;note&#x27;,{citation:c,text,sourceWindowId:id}));
   }
   function showHistory() { drawer(false); closeMenu(); capture(); flushNotes(); persist(); q(&#x27;.ep-history-panel&#x27;).hidden = false; historyLimit = 50; renderHistory(); updateInert(); q(&#x27;[data-act=&quot;history-close&quot;]&#x27;).focus({preventScroll:true}); }
   function renderHistory() {
@@ -2693,9 +2697,9 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       case &#x27;open-reference&#x27;: {
         const c = citation(id);
         if (!c?.verse) { announce(&#x27;请先选中一节经文&#x27;); break; }
-        change(() =&gt; M.openNew(state,&#x27;reference&#x27;,{citation:c})); break;
+        change(() =&gt; M.openNew(state,&#x27;reference&#x27;,{citation:c,sourceWindowId:id})); break;
       }
-      case &#x27;reference-reading&#x27;: change(() =&gt; M.openNew(state,&#x27;reading&#x27;,{book:45,chapter:8,verse:29})); break;
+      case &#x27;reference-reading&#x27;: change(() =&gt; M.openNew(state,&#x27;reading&#x27;,{book:45,chapter:8,verse:29,sourceWindowId:id})); break;
       case &#x27;promote&#x27;: change(() =&gt; M.promote(state,id)); break;
       case &#x27;minimize&#x27;: change(() =&gt; M.minimize(state,id)); break;
       case &#x27;move-float&#x27;: change(() =&gt; M.openFloat(state,id,&#x27;主窗口变为浮窗&#x27;)); break;

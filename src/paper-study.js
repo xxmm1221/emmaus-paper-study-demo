@@ -209,7 +209,7 @@
       if(token!==referenceRequest || !b.isConnected || state.notes[w.contentId].text!==originalText) return;
       if(verse && (!verses.some(v=>v[0]===verse)||!verses.some(v=>v[0]===endVerse))) { announce('引用的节号不存在，请检查笔记'); return; }
       const sourceScene=M.top(state)?.members.includes(id) ? M.top(state) : null;
-      change(()=>{ M.openNew(state,'reading',{book,chapter,verse,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene && M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
+      change(()=>{ M.openNew(state,'reading',{book,chapter,verse,sourceWindowId:id,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene && M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
     } catch (_) { announce('经文暂未载入，请再点一次引用'); }
   }
   function ensurePane(w) {
@@ -366,7 +366,7 @@
   function newNote(id) {
     const c = citation(id); if (!c?.verse) { announce('请先选中一节经文'); return; }
     const text = c ? `> ${info(c.book)?.name} ${c.chapter}:${c.verse}\n> ${c.words || ''}\n\n` : '';
-    change(() => M.openNew(state,'note',{citation:c,text}));
+    change(() => M.openNew(state,'note',{citation:c,text,sourceWindowId:id}));
   }
   function showHistory() { drawer(false); closeMenu(); capture(); flushNotes(); persist(); q('.ep-history-panel').hidden = false; historyLimit = 50; renderHistory(); updateInert(); q('[data-act="history-close"]').focus({preventScroll:true}); }
   function renderHistory() {
@@ -416,9 +416,9 @@
       case 'open-reference': {
         const c = citation(id);
         if (!c?.verse) { announce('请先选中一节经文'); break; }
-        change(() => M.openNew(state,'reference',{citation:c})); break;
+        change(() => M.openNew(state,'reference',{citation:c,sourceWindowId:id})); break;
       }
-      case 'reference-reading': change(() => M.openNew(state,'reading',{book:45,chapter:8,verse:29})); break;
+      case 'reference-reading': change(() => M.openNew(state,'reading',{book:45,chapter:8,verse:29,sourceWindowId:id})); break;
       case 'promote': change(() => M.promote(state,id)); break;
       case 'minimize': change(() => M.minimize(state,id)); break;
       case 'move-float': change(() => M.openFloat(state,id,'主窗口变为浮窗')); break;

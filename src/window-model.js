@@ -62,25 +62,29 @@
       record(s, '标签回收', [oldest.id]);
     }
   }
-  function openFloat(s, id, action = '打开浮窗') {
+  function openFloat(s, id, action = '打开浮窗', sourceWindowId = null) {
     const w = get(s, id);
     if (!w || s.floating === id) return;
     // Release a reopened tab before parking the previous float (no spurious LRU eviction).
     s.tabs = s.tabs.filter(t => t.id !== id);
-    // One floating slot: every incoming window parks its predecessor as a tab,
-    // regardless of whether the main scene is single, paired, or the directory.
-    if (s.floating) minimize(s);
+    // Placement depends on this action's origin, never the background layout.
+    // A child of the current float keeps its source maximized behind it.
+    // An unrelated entrant (including tab restoration / moving a main pane) parks it.
+    if (s.floating) {
+      if (sourceWindowId === s.floating) promote(s, s.floating, '衍生来源浮窗最大化');
+      else minimize(s);
+    }
     detach(s, id); s.floating = id; w.lastOpened = tick(s);
     record(s, action, [id]);
   }
-  function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id); return w; }
+  function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id, '打开浮窗', options?.sourceWindowId); return w; }
   // Independent creation belongs to the main stack; derived content uses openNew.
   function openPrimary(s, kind, options) { const w = create(s, kind, options); promote(s, w.id, '目录新建阅读'); return w; }
   function pin(s, id) {
     const source = get(s, id); if (!source) return;
     const sourceScene = top(s)?.members.includes(id) ? top(s) : null;
     const w = copy(source); w.id = uid(s, 'window'); w.lastOpened = s.clock;
-    s.windows.push(w); openFloat(s, w.id, '固定此处');
+    s.windows.push(w); openFloat(s, w.id, '固定此处', id);
     if (sourceScene && top(s)?.id !== sourceScene.id) resume(s, sourceScene.id);
     return w;
   }
