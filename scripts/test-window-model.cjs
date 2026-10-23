@@ -3,6 +3,8 @@ const root=path.resolve(__dirname,'..'),ctx={};vm.createContext(ctx);vm.runInCon
 const books=JSON.parse(fs.readFileSync(path.join(root,'data/books.json'),'utf8')),checks=[];
 function test(name,run){run();checks.push(name);console.log('PASS '+name);}
 const setup=()=>{const s=M.fresh(),a=M.create(s,'reading',{book:45,chapter:8});M.promote(s,a.id);return{s,a};};
+test('目录独立新增直接最大化，保留旧场景及全局浮窗',()=>{const{s,a}=setup(),f=M.openNew(s,'note'),w=M.openPrimary(s,'reading',{book:1,chapter:1});assert.equal(M.top(s).members[0],w.id);assert.equal(s.floating,f.id);assert(s.scenes.some(c=>c.members.includes(a.id)));M.assert(s);});
+test('空目录新增也进入最大化，不生成浮窗',()=>{const s=M.fresh(),w=M.openPrimary(s,'reading',{book:43,chapter:3});assert.equal(M.top(s).members[0],w.id);assert.equal(s.floating,null);M.assert(s);});
 test('新浮窗默认40%且不自动分屏',()=>{const{s,a}=setup(),w=M.openNew(s,'note');assert.equal(w.height,.4);assert.equal(s.floating,w.id);assert.equal(M.top(s).members.length,1);assert.equal(M.top(s).members[0],a.id);M.assert(s);});
 test('单窗下新浮窗提升旧浮窗',()=>{const{s}=setup(),a=M.openNew(s,'note'),b=M.openNew(s,'reading',{book:43,chapter:3});assert.equal(s.floating,b.id);assert.equal(M.top(s).members[0],a.id);assert.equal(s.tabs.length,0);M.assert(s);});
 test('组合下新浮窗收旧浮窗为标签',()=>{const{s,a}=setup();M.openNew(s,'note');M.pair(s);const pair=M.top(s),old=M.openNew(s,'reference'),next=M.openNew(s,'reading');assert.equal(M.top(s).id,pair.id);assert.equal(s.tabs[0].id,old.id);assert.equal(s.floating,next.id);assert.equal(pair.members[0],a.id);M.assert(s);});

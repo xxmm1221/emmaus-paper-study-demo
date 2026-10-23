@@ -59,7 +59,7 @@
 #emmaus-paper-study .ep-pane.is-quiet>.ep-pane-actions { opacity:0;pointer-events:none;transform:translate(-50%,12px); }
 #emmaus-paper-study .ep-floating-layer { position:absolute;inset:0;pointer-events:none;z-index:5; }
 #emmaus-paper-study .ep-float-slot { position:absolute;inset:0;pointer-events:none; }
-#emmaus-paper-study .ep-sheet { position:absolute;left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));height:40%;min-height:205px;max-height:calc(100% - 24px);border-radius:27px;background:var(--sheet);box-shadow:0 -8px 55px var(--shadow),0 12px 35px var(--shadow);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column;animation:ep-float-in 340ms var(--ease); }
+#emmaus-paper-study .ep-sheet { position:absolute;left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));height:40%;min-height:205px;max-height:calc(100% - 24px);border-radius:27px;background:var(--sheet);box-shadow:0 -8px 55px var(--shadow),0 12px 35px var(--shadow);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column; }
 #emmaus-paper-study .ep-sheet .ep-pane { background:var(--sheet); }
 #emmaus-paper-study .ep-sheet-bar { display:flex;align-items:center;gap:2px;min-height:47px;padding:2px 8px 0 14px;color:var(--muted); }
 #emmaus-paper-study .ep-handle { flex:1;display:flex;align-items:center;gap:8px;min-width:0;height:44px;text-align:left;touch-action:pan-y;cursor:ns-resize;font-size:11px; }
@@ -85,7 +85,7 @@
 #emmaus-paper-study .ep-handle { touch-action:none; }
 #emmaus-paper-study .ep-divider span { width:34px;height:3px;border-radius:5px;background:var(--line); }
 #emmaus-paper-study .ep-drawer-scrim { position:absolute;inset:0;z-index:15;background:light-dark(#26312135,#0008)!important; }
-#emmaus-paper-study .ep-drawer { position:absolute;inset:0 auto 0 0;width:84%;max-width:332px;z-index:16;background:var(--sheet);padding:30px 20px 20px;display:flex;flex-direction:column;border-radius:0 26px 26px 0;box-shadow:8px 0 42px var(--shadow);animation:ep-drawer-in 320ms var(--ease); }
+#emmaus-paper-study .ep-drawer { position:absolute;inset:0 auto 0 0;width:84%;max-width:332px;z-index:16;background:var(--sheet);padding:30px 20px 20px;display:flex;flex-direction:column;border-radius:0 26px 26px 0;box-shadow:8px 0 42px var(--shadow);transform:translateX(-100%);transition:transform 380ms var(--ease); }
 #emmaus-paper-study .ep-drawer>header { display:flex;justify-content:space-between;align-items:center;padding-left:12px; }
 #emmaus-paper-study .ep-drawer-caption { color:var(--muted);font:400 13px/1.8 var(--serif);padding:5px 12px 20px; }
 #emmaus-paper-study .ep-nav-row { display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-height:62px;padding:12px!important;border-radius:15px; }
@@ -137,3 +137,35 @@
 @keyframes ep-drawer-in { from { opacity:.6;transform:translateX(-40px); } to { opacity:1;transform:translateX(0); } }
 @media(max-width:350px) { #emmaus-paper-study .ep-scroll { padding-left:22px;padding-right:22px; } #emmaus-paper-study .ep-pane-head { padding-left:7px;padding-right:7px; } #emmaus-paper-study .ep-pane-head>.ep-icon { width:32px; } #emmaus-paper-study .ep-pane-actions button { padding:0 10px; } #emmaus-paper-study .ep-tab { max-width:104px; } #emmaus-paper-study .ep-history-filters button { padding:0 10px; } }
 @media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important;scroll-behavior:auto!important; } }
+
+/* Compact reading rhythm, without reducing the 44px control hit targets. */
+#emmaus-paper-study .ep-main,#emmaus-paper-study .ep-floating-layer { transform-origin:right center;transition:transform 380ms var(--ease),border-radius 380ms var(--ease); }
+#emmaus-paper-study .ep-drawer-scrim { transition:opacity 380ms var(--ease); }
+#emmaus-paper-study .ep-drawer-dragging .ep-main,#emmaus-paper-study .ep-drawer-dragging .ep-floating-layer,#emmaus-paper-study .ep-drawer-dragging .ep-drawer,#emmaus-paper-study .ep-drawer-dragging .ep-drawer-scrim { transition:none; }
+#emmaus-paper-study .ep-scene-head { min-height:46px;padding:0 8px;padding-top:env(safe-area-inset-top); }
+#emmaus-paper-study .ep-pane-head { min-height:44px;height:44px;padding:0 10px; }
+#emmaus-paper-study .ep-scroll { padding:12px 20px 76px; }
+#emmaus-paper-study .ep-chapter-cover { gap:14px;margin-bottom:16px; }
+#emmaus-paper-study .ep-chapter-number { font-size:44px;letter-spacing:-2px; }
+#emmaus-paper-study .ep-chapter-cover h1 { font-size:20px;margin:0; }
+#emmaus-paper-study .ep-verse { font-size:19px;line-height:1.75;margin-bottom:12px;letter-spacing:.1px; }
+#emmaus-paper-study .ep-sheet .ep-scroll { padding:8px 18px 72px; }
+#emmaus-paper-study .ep-sheet .ep-verse { margin-bottom:10px;line-height:1.75; }
+#emmaus-paper-study .ep-reference p { font-size:17px;line-height:1.8;margin-bottom:14px; }
+#emmaus-paper-study .ep-reference h2,#emmaus-paper-study .ep-note h2 { font-size:23px;margin:6px 0 12px; }
+#emmaus-paper-study .ep-thought { margin:16px 0; }
+#emmaus-paper-study .ep-drawer { padding:16px 12px 12px; }
+#emmaus-paper-study .ep-drawer-caption { margin:4px 0;padding:2px 12px 10px; }
+#emmaus-paper-study .ep-nav-row { min-height:52px;padding:8px 12px!important; }
+#emmaus-paper-study .ep-saved-heading { padding-top:12px; }
+#emmaus-paper-study .ep-directory-head { min-height:60px;padding:8px 12px; }
+#emmaus-paper-study .ep-directory-intro { padding:0 22px 10px; }
+#emmaus-paper-study .ep-directory-tabs { padding:0 16px 8px; }
+#emmaus-paper-study .ep-directory-content { padding:0 16px 16px; }
+#emmaus-paper-study .ep-book-grid { gap:4px; }
+#emmaus-paper-study .ep-book-grid button { min-height:54px;padding:5px 2px; }
+#emmaus-paper-study .ep-chapter-grid { gap:4px; }
+#emmaus-paper-study .ep-chapter-grid button { min-height:44px; }
+@media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important; } }
+
+#emmaus-paper-study .ep-root-directory .ep-directory-content { padding-bottom:var(--floating-space,24px); scroll-padding-bottom:var(--floating-space,24px); }

@@ -1896,7 +1896,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 #emmaus-paper-study .ep-pane.is-quiet&gt;.ep-pane-actions { opacity:0;pointer-events:none;transform:translate(-50%,12px); }
 #emmaus-paper-study .ep-floating-layer { position:absolute;inset:0;pointer-events:none;z-index:5; }
 #emmaus-paper-study .ep-float-slot { position:absolute;inset:0;pointer-events:none; }
-#emmaus-paper-study .ep-sheet { position:absolute;left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));height:40%;min-height:205px;max-height:calc(100% - 24px);border-radius:27px;background:var(--sheet);box-shadow:0 -8px 55px var(--shadow),0 12px 35px var(--shadow);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column;animation:ep-float-in 340ms var(--ease); }
+#emmaus-paper-study .ep-sheet { position:absolute;left:10px;right:10px;bottom:max(12px,env(safe-area-inset-bottom));height:40%;min-height:205px;max-height:calc(100% - 24px);border-radius:27px;background:var(--sheet);box-shadow:0 -8px 55px var(--shadow),0 12px 35px var(--shadow);overflow:hidden;pointer-events:auto;display:flex;flex-direction:column; }
 #emmaus-paper-study .ep-sheet .ep-pane { background:var(--sheet); }
 #emmaus-paper-study .ep-sheet-bar { display:flex;align-items:center;gap:2px;min-height:47px;padding:2px 8px 0 14px;color:var(--muted); }
 #emmaus-paper-study .ep-handle { flex:1;display:flex;align-items:center;gap:8px;min-width:0;height:44px;text-align:left;touch-action:pan-y;cursor:ns-resize;font-size:11px; }
@@ -1922,7 +1922,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 #emmaus-paper-study .ep-handle { touch-action:none; }
 #emmaus-paper-study .ep-divider span { width:34px;height:3px;border-radius:5px;background:var(--line); }
 #emmaus-paper-study .ep-drawer-scrim { position:absolute;inset:0;z-index:15;background:light-dark(#26312135,#0008)!important; }
-#emmaus-paper-study .ep-drawer { position:absolute;inset:0 auto 0 0;width:84%;max-width:332px;z-index:16;background:var(--sheet);padding:30px 20px 20px;display:flex;flex-direction:column;border-radius:0 26px 26px 0;box-shadow:8px 0 42px var(--shadow);animation:ep-drawer-in 320ms var(--ease); }
+#emmaus-paper-study .ep-drawer { position:absolute;inset:0 auto 0 0;width:84%;max-width:332px;z-index:16;background:var(--sheet);padding:30px 20px 20px;display:flex;flex-direction:column;border-radius:0 26px 26px 0;box-shadow:8px 0 42px var(--shadow);transform:translateX(-100%);transition:transform 380ms var(--ease); }
 #emmaus-paper-study .ep-drawer&gt;header { display:flex;justify-content:space-between;align-items:center;padding-left:12px; }
 #emmaus-paper-study .ep-drawer-caption { color:var(--muted);font:400 13px/1.8 var(--serif);padding:5px 12px 20px; }
 #emmaus-paper-study .ep-nav-row { display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-height:62px;padding:12px!important;border-radius:15px; }
@@ -1974,6 +1974,38 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 @keyframes ep-drawer-in { from { opacity:.6;transform:translateX(-40px); } to { opacity:1;transform:translateX(0); } }
 @media(max-width:350px) { #emmaus-paper-study .ep-scroll { padding-left:22px;padding-right:22px; } #emmaus-paper-study .ep-pane-head { padding-left:7px;padding-right:7px; } #emmaus-paper-study .ep-pane-head&gt;.ep-icon { width:32px; } #emmaus-paper-study .ep-pane-actions button { padding:0 10px; } #emmaus-paper-study .ep-tab { max-width:104px; } #emmaus-paper-study .ep-history-filters button { padding:0 10px; } }
 @media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important;scroll-behavior:auto!important; } }
+
+/* Compact reading rhythm, without reducing the 44px control hit targets. */
+#emmaus-paper-study .ep-main,#emmaus-paper-study .ep-floating-layer { transform-origin:right center;transition:transform 380ms var(--ease),border-radius 380ms var(--ease); }
+#emmaus-paper-study .ep-drawer-scrim { transition:opacity 380ms var(--ease); }
+#emmaus-paper-study .ep-drawer-dragging .ep-main,#emmaus-paper-study .ep-drawer-dragging .ep-floating-layer,#emmaus-paper-study .ep-drawer-dragging .ep-drawer,#emmaus-paper-study .ep-drawer-dragging .ep-drawer-scrim { transition:none; }
+#emmaus-paper-study .ep-scene-head { min-height:46px;padding:0 8px;padding-top:env(safe-area-inset-top); }
+#emmaus-paper-study .ep-pane-head { min-height:44px;height:44px;padding:0 10px; }
+#emmaus-paper-study .ep-scroll { padding:12px 20px 76px; }
+#emmaus-paper-study .ep-chapter-cover { gap:14px;margin-bottom:16px; }
+#emmaus-paper-study .ep-chapter-number { font-size:44px;letter-spacing:-2px; }
+#emmaus-paper-study .ep-chapter-cover h1 { font-size:20px;margin:0; }
+#emmaus-paper-study .ep-verse { font-size:19px;line-height:1.75;margin-bottom:12px;letter-spacing:.1px; }
+#emmaus-paper-study .ep-sheet .ep-scroll { padding:8px 18px 72px; }
+#emmaus-paper-study .ep-sheet .ep-verse { margin-bottom:10px;line-height:1.75; }
+#emmaus-paper-study .ep-reference p { font-size:17px;line-height:1.8;margin-bottom:14px; }
+#emmaus-paper-study .ep-reference h2,#emmaus-paper-study .ep-note h2 { font-size:23px;margin:6px 0 12px; }
+#emmaus-paper-study .ep-thought { margin:16px 0; }
+#emmaus-paper-study .ep-drawer { padding:16px 12px 12px; }
+#emmaus-paper-study .ep-drawer-caption { margin:4px 0;padding:2px 12px 10px; }
+#emmaus-paper-study .ep-nav-row { min-height:52px;padding:8px 12px!important; }
+#emmaus-paper-study .ep-saved-heading { padding-top:12px; }
+#emmaus-paper-study .ep-directory-head { min-height:60px;padding:8px 12px; }
+#emmaus-paper-study .ep-directory-intro { padding:0 22px 10px; }
+#emmaus-paper-study .ep-directory-tabs { padding:0 16px 8px; }
+#emmaus-paper-study .ep-directory-content { padding:0 16px 16px; }
+#emmaus-paper-study .ep-book-grid { gap:4px; }
+#emmaus-paper-study .ep-book-grid button { min-height:54px;padding:5px 2px; }
+#emmaus-paper-study .ep-chapter-grid { gap:4px; }
+#emmaus-paper-study .ep-chapter-grid button { min-height:44px; }
+@media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-phone * { animation:none!important;transition:none!important; } }
+
+#emmaus-paper-study .ep-root-directory .ep-directory-content { padding-bottom:var(--floating-space,24px); scroll-padding-bottom:var(--floating-space,24px); }
 &lt;/style&gt;
 &lt;script&gt;/* Window placement is independent of content. This module also runs in Node QA. */
 (function (global) {
@@ -2052,6 +2084,8 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     record(s, action, [id]);
   }
   function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id); return w; }
+  // Independent creation belongs to the main stack; derived content uses openNew.
+  function openPrimary(s, kind, options) { const w = create(s, kind, options); promote(s, w.id, &#x27;目录新建阅读&#x27;); return w; }
   function pin(s, id) {
     const source = get(s, id); if (!source) return;
     const sourceScene = top(s)?.members.includes(id) ? top(s) : null;
@@ -2180,7 +2214,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id =&gt; !ids.includes(id)) || s.tabs.length &gt; 3 || s.scenes.some(x =&gt; x.members.length &lt; 1 || x.members.length &gt; 2)) throw Error(&#x27;窗口层级不一致&#x27;);
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);
 &lt;/script&gt;
 &lt;script&gt;(function () {
@@ -2244,7 +2278,41 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     } catch (_) { q(&#x27;.ep-storage-error&#x27;).hidden = false; }
   }
   const scheduleSave = () =&gt; { clearTimeout(saveTimer); saveTimer = setTimeout(persist,220); };
-  function change(callback) { capture(); flushNotes(); selection = null; closeMenu(); callback(); render(); persist(false); }
+  let motionOrigin = null, drawerTimer;
+  const reduceMotion = () =&gt; matchMedia(&#x27;(prefers-reduced-motion: reduce)&#x27;).matches;
+  function surfaces() {
+    const result = new Map();
+    qa(&#x27;.ep-main .ep-pane,.ep-sheet:not([data-motion-ghost]),.ep-tabs .ep-tab&#x27;).forEach(node =&gt; {
+      const id = node.dataset.windowId || node.dataset.tab;
+      if (id) result.set(id,{node,rect:node.getBoundingClientRect()});
+    });
+    return result;
+  }
+  function animateWindows(before, origin) {
+    if (reduceMotion()) return;
+    const after = surfaces(), options = {duration:460,easing:&#x27;cubic-bezier(.22,.8,.25,1)&#x27;};
+    after.forEach(({node,rect},id) =&gt; {
+      const from = before.get(id)?.rect || origin;
+      if (!from || !rect.width || !rect.height) return;
+      const dx = from.left-rect.left, dy = from.top-rect.top, sx = from.width/rect.width, sy = from.height/rect.height;
+      if (Math.abs(dx)+Math.abs(dy)+Math.abs(sx-1)+Math.abs(sy-1) &lt; .5) return;
+      node.animate([{transformOrigin:&#x27;0 0&#x27;,transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,opacity:before.has(id)?1:.35,borderRadius:&#x27;22px&#x27;}, {transformOrigin:&#x27;0 0&#x27;,transform:&#x27;none&#x27;,opacity:1,borderRadius:getComputedStyle(node).borderRadius}],options);
+    });
+    before.forEach(({rect,ghost},id) =&gt; {
+      if (after.has(id)) return;
+      const bounds = phone.getBoundingClientRect(), scene = state.scenes.find(s =&gt; s.members.includes(id));
+      const target = scene &amp;&amp; q(`[data-resume=&quot;${scene.id}&quot;]`);
+      const to = target &amp;&amp; !q(&#x27;.ep-drawer&#x27;).hidden ? target.getBoundingClientRect() : {left:bounds.left+20,top:bounds.top+24,width:44,height:44};
+      Object.assign(ghost.style,{position:&#x27;absolute&#x27;,margin:&#x27;0&#x27;,inset:&#x27;auto&#x27;,left:rect.left-bounds.left+&#x27;px&#x27;,top:rect.top-bounds.top+&#x27;px&#x27;,width:rect.width+&#x27;px&#x27;,height:rect.height+&#x27;px&#x27;,minHeight:&#x27;0&#x27;,maxHeight:&#x27;none&#x27;,zIndex:30,pointerEvents:&#x27;none&#x27;,transformOrigin:&#x27;0 0&#x27;});
+      ghost.dataset.motionGhost = &#x27;true&#x27;; ghost.setAttribute(&#x27;aria-hidden&#x27;,&#x27;true&#x27;); ghost.inert = true; phone.append(ghost);
+      ghost.animate([{transform:&#x27;none&#x27;,opacity:1},{transform:`translate(${to.left-rect.left}px,${to.top-rect.top}px) scale(${to.width/rect.width},${to.height/rect.height})`,opacity:0}],options).finished.catch(()=&gt;{}).finally(()=&gt;ghost.remove());
+    });
+  }
+  function change(callback, origin = motionOrigin) {
+    capture(); flushNotes(); qa(&#x27;[data-motion-ghost]&#x27;).forEach(n=&gt;n.remove()); phone.getAnimations({subtree:true}).forEach(a =&gt; { if (a.effect?.target?.closest?.(&#x27;.ep-main,.ep-floating-layer&#x27;)) a.finish(); }); const before = surfaces();
+    before.forEach(item =&gt; { item.ghost = item.node.cloneNode(true); });
+    selection = null; closeMenu(); callback(); render(); animateWindows(before,origin); persist(false);
+  }
 
   function setQuiet(node,quiet) {
     node.classList.toggle(&#x27;is-quiet&#x27;,quiet); node.querySelector(&#x27;.ep-tools-restore&#x27;).hidden = !quiet;
@@ -2369,11 +2437,27 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function updateInert() {
     const modal = drawerOpen || !!directory || !q(&#x27;.ep-history-panel&#x27;).hidden;
     q(&#x27;.ep-main&#x27;).inert = modal; q(&#x27;.ep-floating-layer&#x27;).inert = modal;
-    q(&#x27;.ep-drawer&#x27;).inert = !!directory || !q(&#x27;.ep-history-panel&#x27;).hidden;
+    q(&#x27;.ep-drawer&#x27;).inert = !drawerOpen || !!directory || !q(&#x27;.ep-history-panel&#x27;).hidden;
+  }
+  function drawerProgress(progress, dragging=false) {
+    phone.classList.toggle(&#x27;ep-drawer-dragging&#x27;,dragging);
+    const width = q(&#x27;.ep-drawer&#x27;).offsetWidth;
+    q(&#x27;.ep-drawer&#x27;).style.transform = `translateX(${(progress-1)*width}px)`;
+    q(&#x27;.ep-drawer-scrim&#x27;).style.opacity = progress;
+    for (const node of [q(&#x27;.ep-main&#x27;),q(&#x27;.ep-floating-layer&#x27;)]) {
+      node.style.transform = `translateX(${width*.88*progress}px) scale(${1-.08*progress})`;
+      node.style.borderRadius = `${24*progress}px`;
+    }
   }
   function drawer(open) {
     if (open) { capture(); flushNotes(); closeMenu(); if (directory) closeDirectory(); q(&#x27;.ep-history-panel&#x27;).hidden = true; lastModalFocus = document.activeElement; renderSaved(); }
-    drawerOpen = open; const el = q(&#x27;.ep-drawer&#x27;); el.hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = !open; el.style.transform = &#x27;&#x27;; q(&#x27;.ep-drawer-scrim&#x27;).style.opacity = &#x27;&#x27;; q(&#x27;.ep-main&#x27;).style.transform = open ? &#x27;translateX(24px)&#x27; : &#x27;&#x27;;
+    clearTimeout(drawerTimer);
+    const el = q(&#x27;.ep-drawer&#x27;), wasHidden = el.hidden;
+    el.hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = false;
+    if (wasHidden) { drawerProgress(0,true); el.getBoundingClientRect(); }
+    drawerOpen = open; drawerProgress(open ? 1 : 0);
+    el.inert = !open;
+    if (!open) drawerTimer = setTimeout(() =&gt; { if (!drawerOpen &amp;&amp; gesture?.mode !== &#x27;drawer&#x27;) el.hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = true; },reduceMotion()?0:380);
     updateInert(); icons(); if (open) el.querySelector(&#x27;button&#x27;).focus({preventScroll:true}); else if (lastModalFocus?.isConnected &amp;&amp; !directory) lastModalFocus.focus({preventScroll:true});
   }
   function openDirectory(id) {
@@ -2386,6 +2470,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     container.innerHTML = `&lt;div class=&quot;${isRoot ? &#x27;ep-root-directory&#x27; : &#x27;ep-directory-inner&#x27;}&quot; data-catalog=&quot;${kind}&quot; style=&quot;display:flex;flex-direction:column;min-height:0;height:100%&quot;&gt;&lt;header class=&quot;ep-directory-head&quot;&gt;${book ? button(&#x27;directory-back&#x27;,&#x27;返回书卷目录&#x27;,&#x27;arrow-left&#x27;) : isRoot ? button(&#x27;drawer&#x27;,&#x27;打开后台&#x27;,&#x27;panel-left&#x27;) : &#x27;&#x27;}&lt;h2&gt;${book ? esc(book.name) + &#x27; · 选章&#x27; : isRoot ? &#x27;书卷目录&#x27; : catalog.id ? &#x27;选择书卷&#x27; : &#x27;新建读经&#x27;}&lt;/h2&gt;${isRoot ? button(&#x27;history&#x27;,&#x27;历史记录&#x27;,&#x27;history&#x27;) : button(&#x27;directory-close&#x27;,&#x27;取消选择&#x27;,&#x27;x&#x27;)}&lt;/header&gt;${!book &amp;&amp; isRoot ? &#x27;&lt;p class=&quot;ep-directory-intro&quot;&gt;翻开话语，继续今天的旅程。&lt;/p&gt;&#x27; : &#x27;&#x27;}&lt;div class=&quot;ep-directory-tabs&quot;${book ? &#x27; hidden&#x27; : &#x27;&#x27;}&gt;&lt;button data-testament=&quot;旧约&quot; aria-pressed=&quot;${catalog.testament === &#x27;旧约&#x27;}&quot;&gt;旧约&lt;/button&gt;&lt;button data-testament=&quot;新约&quot; aria-pressed=&quot;${catalog.testament === &#x27;新约&#x27;}&quot;&gt;新约&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;ep-directory-content&quot;&gt;${book ? `&lt;div class=&quot;ep-chapter-grid&quot;&gt;${Array.from({length:book.chapterCount},(_,i) =&gt; `&lt;button data-pick-chapter=&quot;${i+1}&quot; aria-label=&quot;${esc(book.name)} 第 ${i+1} 章&quot;${catalog.busy ? &#x27; disabled&#x27; : &#x27;&#x27;}&gt;${i+1}&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;` : `&lt;div class=&quot;ep-book-grid&quot;&gt;${books.filter(b =&gt; b.testament === catalog.testament).map(b =&gt; `&lt;button data-pick-book=&quot;${b.number}&quot;&gt;${esc(b.name)}&lt;small&gt;${b.chapterCount} 章&lt;/small&gt;&lt;/button&gt;`).join(&#x27;&#x27;)}&lt;/div&gt;`}&lt;/div&gt;&lt;div class=&quot;ep-directory-status&quot; role=&quot;status&quot;&gt;${catalog.busy ? &#x27;正在载入经文…&#x27; : book ? &#x27;选择章节后打开阅读。&#x27; : &#x27;先选书卷，再选章节。&#x27;}&lt;/div&gt;&lt;/div&gt;`; icons();
   }
   async function chooseChapter(number,catalog,isRoot) {
+    const origin = motionOrigin;
     if (catalog.busy) return; const book = info(catalog.book); if (!book || number &lt; 1 || number &gt; book.chapterCount) return;
     const serial = catalog.serial, token = catalog.request = (catalog.request || 0)+1, container = isRoot ? q(&#x27;.ep-main&#x27;) : q(&#x27;.ep-directory&#x27;); catalog.busy = true; renderDirectory(container,catalog,isRoot);
     try {
@@ -2393,7 +2478,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       if (catalog.request !== token || catalog.book !== book.number || (isRoot &amp;&amp; (M.top(state) || rootCatalog !== catalog)) || (!isRoot &amp;&amp; (directory !== catalog || directory.serial !== serial))) return;
       if (!data.chapters[number-1]?.length) throw Error(&#x27;经文未载入&#x27;);
       if (!isRoot) closeDirectory(); catalog.busy = false;
-      change(() =&gt; { if (catalog.id &amp;&amp; M.get(state,catalog.id)) M.navigate(state,catalog.id,book.number,number); else M.openNew(state,&#x27;reading&#x27;,{book:book.number,chapter:number}); });
+      change(() =&gt; { if (catalog.id &amp;&amp; M.get(state,catalog.id)) M.navigate(state,catalog.id,book.number,number); else M.openPrimary(state,&#x27;reading&#x27;,{book:book.number,chapter:number}); },origin);
     } catch (_) { if ((isRoot &amp;&amp; rootCatalog === catalog) || directory === catalog) { catalog.busy = false; renderDirectory(container,catalog,isRoot); container.querySelector(&#x27;.ep-directory-status&#x27;).textContent = &#x27;经文暂未载入，请点击章节重试。&#x27;; } }
   }
   async function navigate(id,delta) {
@@ -2427,6 +2512,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   phone.addEventListener(&#x27;click&#x27;,event =&gt; {
     if (performance.now() &lt; ignoreClickUntil) { event.preventDefault(); return; }
     const b = event.target.closest(&#x27;button&#x27;); if (!b || b.disabled) return;
+    motionOrigin = b.getBoundingClientRect();
     if (b.dataset.tab) { change(() =&gt; M.openFloat(state,b.dataset.tab,&#x27;打开悬浮标签&#x27;)); return; }
     if (b.dataset.resume) { drawer(false); change(() =&gt; M.resume(state,b.dataset.resume)); return; }
     if (b.dataset.restoreEvent) { change(() =&gt; M.restoreEvent(state,b.dataset.restoreEvent)); q(&#x27;.ep-history-panel&#x27;).hidden = true; updateInert(); return; }
@@ -2501,7 +2587,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (!gesture || gesture.pointer !== event.pointerId) return; const g = gesture, dx = event.clientX-g.x, dy = event.clientY-g.y;
     if (!g.mode) {
       if (Math.abs(dx) &gt; 12 &amp;&amp; Math.abs(dx) &gt; Math.abs(dy)*1.25 &amp;&amp; ((g.canOpen &amp;&amp; dx &gt; 0) || (g.wasOpen &amp;&amp; dx &lt; 0))) {
-        g.mode = &#x27;drawer&#x27;; closeMenu(); if (directory) closeDirectory(); q(&#x27;.ep-history-panel&#x27;).hidden = true; renderSaved(); icons(); q(&#x27;.ep-drawer&#x27;).hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = false;
+        g.mode = &#x27;drawer&#x27;; clearTimeout(drawerTimer); closeMenu(); if (directory) closeDirectory(); q(&#x27;.ep-history-panel&#x27;).hidden = true; renderSaved(); icons(); q(&#x27;.ep-drawer&#x27;).hidden = q(&#x27;.ep-drawer-scrim&#x27;).hidden = false;
       } else if (g.handle &amp;&amp; Math.abs(dy) &gt; 9 &amp;&amp; Math.abs(dy) &gt; Math.abs(dx)*1.25) g.mode = g.handle.classList.contains(&#x27;ep-divider&#x27;) ? &#x27;divider&#x27; : &#x27;height&#x27;;
       else if (Math.abs(dy) &gt; 14 &amp;&amp; !g.handle) { gesture = null; return; }
       if (g.mode) { phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
@@ -2509,7 +2595,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     if (!g.mode) return; event.preventDefault();
     if (g.mode === &#x27;drawer&#x27;) {
       const width = q(&#x27;.ep-drawer&#x27;).offsetWidth, progress = clamp((g.wasOpen ? width : 0) + dx,0,width)/width; g.progress = progress;
-      q(&#x27;.ep-drawer&#x27;).style.animation = &#x27;none&#x27;; q(&#x27;.ep-drawer&#x27;).style.transform = `translateX(${(progress-1)*width}px)`; q(&#x27;.ep-drawer-scrim&#x27;).style.opacity = progress; q(&#x27;.ep-main&#x27;).style.transform = `translateX(${24*progress}px)`;
+      drawerProgress(progress,true);
     } else if (g.mode === &#x27;height&#x27; &amp;&amp; state.floating) {
       const w = M.get(state,state.floating); w.height = clamp(g.height-dy/phone.clientHeight,205/phone.clientHeight,.94); q(&#x27;.ep-sheet&#x27;).style.height = w.height*phone.clientHeight+&#x27;px&#x27;;
       q(&#x27;.ep-main&#x27;).style.setProperty(&#x27;--floating-space&#x27;,w.height*phone.clientHeight+65+&#x27;px&#x27;);
@@ -2521,7 +2607,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   function endGesture(event,cancelled=false) {
     const g = gesture; gesture = null; if (!g) return;
     if (phone.hasPointerCapture(event.pointerId)) phone.releasePointerCapture(event.pointerId);
-    if (g.mode === &#x27;drawer&#x27;) { q(&#x27;.ep-drawer&#x27;).style.animation = &#x27;&#x27;; drawer(cancelled ? g.wasOpen : g.progress &gt; .35); }
+    if (g.mode === &#x27;drawer&#x27;) { drawer(cancelled ? g.wasOpen : g.progress &gt; (g.wasOpen ? .65 : .35)); }
     if (g.mode) { ignoreClickUntil = performance.now()+350; persist(); }
   }
   phone.addEventListener(&#x27;pointerup&#x27;,event =&gt; endGesture(event),true);

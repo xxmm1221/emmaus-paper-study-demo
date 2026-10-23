@@ -75,6 +75,8 @@
     record(s, action, [id]);
   }
   function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id); return w; }
+  // Independent creation belongs to the main stack; derived content uses openNew.
+  function openPrimary(s, kind, options) { const w = create(s, kind, options); promote(s, w.id, '目录新建阅读'); return w; }
   function pin(s, id) {
     const source = get(s, id); if (!source) return;
     const sourceScene = top(s)?.members.includes(id) ? top(s) : null;
@@ -203,5 +205,5 @@
     if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id => !ids.includes(id)) || s.tabs.length > 3 || s.scenes.some(x => x.members.length < 1 || x.members.length > 2)) throw Error('窗口层级不一致');
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);

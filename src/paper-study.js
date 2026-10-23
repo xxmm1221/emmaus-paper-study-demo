@@ -59,7 +59,41 @@
     } catch (_) { q('.ep-storage-error').hidden = false; }
   }
   const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist,220); };
-  function change(callback) { capture(); flushNotes(); selection = null; closeMenu(); callback(); render(); persist(false); }
+  let motionOrigin = null, drawerTimer;
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function surfaces() {
+    const result = new Map();
+    qa('.ep-main .ep-pane,.ep-sheet:not([data-motion-ghost]),.ep-tabs .ep-tab').forEach(node => {
+      const id = node.dataset.windowId || node.dataset.tab;
+      if (id) result.set(id,{node,rect:node.getBoundingClientRect()});
+    });
+    return result;
+  }
+  function animateWindows(before, origin) {
+    if (reduceMotion()) return;
+    const after = surfaces(), options = {duration:460,easing:'cubic-bezier(.22,.8,.25,1)'};
+    after.forEach(({node,rect},id) => {
+      const from = before.get(id)?.rect || origin;
+      if (!from || !rect.width || !rect.height) return;
+      const dx = from.left-rect.left, dy = from.top-rect.top, sx = from.width/rect.width, sy = from.height/rect.height;
+      if (Math.abs(dx)+Math.abs(dy)+Math.abs(sx-1)+Math.abs(sy-1) < .5) return;
+      node.animate([{transformOrigin:'0 0',transform:`translate(${dx}px,${dy}px) scale(${sx},${sy})`,opacity:before.has(id)?1:.35,borderRadius:'22px'}, {transformOrigin:'0 0',transform:'none',opacity:1,borderRadius:getComputedStyle(node).borderRadius}],options);
+    });
+    before.forEach(({rect,ghost},id) => {
+      if (after.has(id)) return;
+      const bounds = phone.getBoundingClientRect(), scene = state.scenes.find(s => s.members.includes(id));
+      const target = scene && q(`[data-resume="${scene.id}"]`);
+      const to = target && !q('.ep-drawer').hidden ? target.getBoundingClientRect() : {left:bounds.left+20,top:bounds.top+24,width:44,height:44};
+      Object.assign(ghost.style,{position:'absolute',margin:'0',inset:'auto',left:rect.left-bounds.left+'px',top:rect.top-bounds.top+'px',width:rect.width+'px',height:rect.height+'px',minHeight:'0',maxHeight:'none',zIndex:30,pointerEvents:'none',transformOrigin:'0 0'});
+      ghost.dataset.motionGhost = 'true'; ghost.setAttribute('aria-hidden','true'); ghost.inert = true; phone.append(ghost);
+      ghost.animate([{transform:'none',opacity:1},{transform:`translate(${to.left-rect.left}px,${to.top-rect.top}px) scale(${to.width/rect.width},${to.height/rect.height})`,opacity:0}],options).finished.catch(()=>{}).finally(()=>ghost.remove());
+    });
+  }
+  function change(callback, origin = motionOrigin) {
+    capture(); flushNotes(); qa('[data-motion-ghost]').forEach(n=>n.remove()); phone.getAnimations({subtree:true}).forEach(a => { if (a.effect?.target?.closest?.('.ep-main,.ep-floating-layer')) a.finish(); }); const before = surfaces();
+    before.forEach(item => { item.ghost = item.node.cloneNode(true); });
+    selection = null; closeMenu(); callback(); render(); animateWindows(before,origin); persist(false);
+  }
 
   function setQuiet(node,quiet) {
     node.classList.toggle('is-quiet',quiet); node.querySelector('.ep-tools-restore').hidden = !quiet;
@@ -184,11 +218,27 @@
   function updateInert() {
     const modal = drawerOpen || !!directory || !q('.ep-history-panel').hidden;
     q('.ep-main').inert = modal; q('.ep-floating-layer').inert = modal;
-    q('.ep-drawer').inert = !!directory || !q('.ep-history-panel').hidden;
+    q('.ep-drawer').inert = !drawerOpen || !!directory || !q('.ep-history-panel').hidden;
+  }
+  function drawerProgress(progress, dragging=false) {
+    phone.classList.toggle('ep-drawer-dragging',dragging);
+    const width = q('.ep-drawer').offsetWidth;
+    q('.ep-drawer').style.transform = `translateX(${(progress-1)*width}px)`;
+    q('.ep-drawer-scrim').style.opacity = progress;
+    for (const node of [q('.ep-main'),q('.ep-floating-layer')]) {
+      node.style.transform = `translateX(${width*.88*progress}px) scale(${1-.08*progress})`;
+      node.style.borderRadius = `${24*progress}px`;
+    }
   }
   function drawer(open) {
     if (open) { capture(); flushNotes(); closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; lastModalFocus = document.activeElement; renderSaved(); }
-    drawerOpen = open; const el = q('.ep-drawer'); el.hidden = q('.ep-drawer-scrim').hidden = !open; el.style.transform = ''; q('.ep-drawer-scrim').style.opacity = ''; q('.ep-main').style.transform = open ? 'translateX(24px)' : '';
+    clearTimeout(drawerTimer);
+    const el = q('.ep-drawer'), wasHidden = el.hidden;
+    el.hidden = q('.ep-drawer-scrim').hidden = false;
+    if (wasHidden) { drawerProgress(0,true); el.getBoundingClientRect(); }
+    drawerOpen = open; drawerProgress(open ? 1 : 0);
+    el.inert = !open;
+    if (!open) drawerTimer = setTimeout(() => { if (!drawerOpen && gesture?.mode !== 'drawer') el.hidden = q('.ep-drawer-scrim').hidden = true; },reduceMotion()?0:380);
     updateInert(); icons(); if (open) el.querySelector('button').focus({preventScroll:true}); else if (lastModalFocus?.isConnected && !directory) lastModalFocus.focus({preventScroll:true});
   }
   function openDirectory(id) {
@@ -201,6 +251,7 @@
     container.innerHTML = `<div class="${isRoot ? 'ep-root-directory' : 'ep-directory-inner'}" data-catalog="${kind}" style="display:flex;flex-direction:column;min-height:0;height:100%"><header class="ep-directory-head">${book ? button('directory-back','返回书卷目录','arrow-left') : isRoot ? button('drawer','打开后台','panel-left') : ''}<h2>${book ? esc(book.name) + ' · 选章' : isRoot ? '书卷目录' : catalog.id ? '选择书卷' : '新建读经'}</h2>${isRoot ? button('history','历史记录','history') : button('directory-close','取消选择','x')}</header>${!book && isRoot ? '<p class="ep-directory-intro">翻开话语，继续今天的旅程。</p>' : ''}<div class="ep-directory-tabs"${book ? ' hidden' : ''}><button data-testament="旧约" aria-pressed="${catalog.testament === '旧约'}">旧约</button><button data-testament="新约" aria-pressed="${catalog.testament === '新约'}">新约</button></div><div class="ep-directory-content">${book ? `<div class="ep-chapter-grid">${Array.from({length:book.chapterCount},(_,i) => `<button data-pick-chapter="${i+1}" aria-label="${esc(book.name)} 第 ${i+1} 章"${catalog.busy ? ' disabled' : ''}>${i+1}</button>`).join('')}</div>` : `<div class="ep-book-grid">${books.filter(b => b.testament === catalog.testament).map(b => `<button data-pick-book="${b.number}">${esc(b.name)}<small>${b.chapterCount} 章</small></button>`).join('')}</div>`}</div><div class="ep-directory-status" role="status">${catalog.busy ? '正在载入经文…' : book ? '选择章节后打开阅读。' : '先选书卷，再选章节。'}</div></div>`; icons();
   }
   async function chooseChapter(number,catalog,isRoot) {
+    const origin = motionOrigin;
     if (catalog.busy) return; const book = info(catalog.book); if (!book || number < 1 || number > book.chapterCount) return;
     const serial = catalog.serial, token = catalog.request = (catalog.request || 0)+1, container = isRoot ? q('.ep-main') : q('.ep-directory'); catalog.busy = true; renderDirectory(container,catalog,isRoot);
     try {
@@ -208,7 +259,7 @@
       if (catalog.request !== token || catalog.book !== book.number || (isRoot && (M.top(state) || rootCatalog !== catalog)) || (!isRoot && (directory !== catalog || directory.serial !== serial))) return;
       if (!data.chapters[number-1]?.length) throw Error('经文未载入');
       if (!isRoot) closeDirectory(); catalog.busy = false;
-      change(() => { if (catalog.id && M.get(state,catalog.id)) M.navigate(state,catalog.id,book.number,number); else M.openNew(state,'reading',{book:book.number,chapter:number}); });
+      change(() => { if (catalog.id && M.get(state,catalog.id)) M.navigate(state,catalog.id,book.number,number); else M.openPrimary(state,'reading',{book:book.number,chapter:number}); },origin);
     } catch (_) { if ((isRoot && rootCatalog === catalog) || directory === catalog) { catalog.busy = false; renderDirectory(container,catalog,isRoot); container.querySelector('.ep-directory-status').textContent = '经文暂未载入，请点击章节重试。'; } }
   }
   async function navigate(id,delta) {
@@ -242,6 +293,7 @@
   phone.addEventListener('click',event => {
     if (performance.now() < ignoreClickUntil) { event.preventDefault(); return; }
     const b = event.target.closest('button'); if (!b || b.disabled) return;
+    motionOrigin = b.getBoundingClientRect();
     if (b.dataset.tab) { change(() => M.openFloat(state,b.dataset.tab,'打开悬浮标签')); return; }
     if (b.dataset.resume) { drawer(false); change(() => M.resume(state,b.dataset.resume)); return; }
     if (b.dataset.restoreEvent) { change(() => M.restoreEvent(state,b.dataset.restoreEvent)); q('.ep-history-panel').hidden = true; updateInert(); return; }
@@ -316,7 +368,7 @@
     if (!gesture || gesture.pointer !== event.pointerId) return; const g = gesture, dx = event.clientX-g.x, dy = event.clientY-g.y;
     if (!g.mode) {
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)*1.25 && ((g.canOpen && dx > 0) || (g.wasOpen && dx < 0))) {
-        g.mode = 'drawer'; closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; renderSaved(); icons(); q('.ep-drawer').hidden = q('.ep-drawer-scrim').hidden = false;
+        g.mode = 'drawer'; clearTimeout(drawerTimer); closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; renderSaved(); icons(); q('.ep-drawer').hidden = q('.ep-drawer-scrim').hidden = false;
       } else if (g.handle && Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)*1.25) g.mode = g.handle.classList.contains('ep-divider') ? 'divider' : 'height';
       else if (Math.abs(dy) > 14 && !g.handle) { gesture = null; return; }
       if (g.mode) { phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
@@ -324,7 +376,7 @@
     if (!g.mode) return; event.preventDefault();
     if (g.mode === 'drawer') {
       const width = q('.ep-drawer').offsetWidth, progress = clamp((g.wasOpen ? width : 0) + dx,0,width)/width; g.progress = progress;
-      q('.ep-drawer').style.animation = 'none'; q('.ep-drawer').style.transform = `translateX(${(progress-1)*width}px)`; q('.ep-drawer-scrim').style.opacity = progress; q('.ep-main').style.transform = `translateX(${24*progress}px)`;
+      drawerProgress(progress,true);
     } else if (g.mode === 'height' && state.floating) {
       const w = M.get(state,state.floating); w.height = clamp(g.height-dy/phone.clientHeight,205/phone.clientHeight,.94); q('.ep-sheet').style.height = w.height*phone.clientHeight+'px';
       q('.ep-main').style.setProperty('--floating-space',w.height*phone.clientHeight+65+'px');
@@ -336,7 +388,7 @@
   function endGesture(event,cancelled=false) {
     const g = gesture; gesture = null; if (!g) return;
     if (phone.hasPointerCapture(event.pointerId)) phone.releasePointerCapture(event.pointerId);
-    if (g.mode === 'drawer') { q('.ep-drawer').style.animation = ''; drawer(cancelled ? g.wasOpen : g.progress > .35); }
+    if (g.mode === 'drawer') { drawer(cancelled ? g.wasOpen : g.progress > (g.wasOpen ? .65 : .35)); }
     if (g.mode) { ignoreClickUntil = performance.now()+350; persist(); }
   }
   phone.addEventListener('pointerup',event => endGesture(event),true);
