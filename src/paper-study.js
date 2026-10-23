@@ -60,6 +60,8 @@
   }
   const scheduleSave = () => { clearTimeout(saveTimer); saveTimer = setTimeout(persist,220); };
   let motionOrigin = null, drawerTimer;
+  // Focus/chrome are transient UI state, never another persisted window mode.
+  let activeWindowId = null, toolsVisible = false;
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const windowMotions = new Set();
   const snapshotProperties = ('display position inset top right bottom left z-index box-sizing width height min-width min-height max-width max-height margin padding border border-radius background background-color background-image color box-shadow overflow overflow-x overflow-y opacity visibility font font-family font-size font-weight font-style line-height letter-spacing text-align text-indent text-decoration white-space word-break overflow-wrap vertical-align flex flex-direction flex-wrap align-items align-self justify-content gap grid-template-columns grid-template-rows transform transform-origin object-fit appearance mask-image').split(' ');
@@ -165,6 +167,10 @@
     }
     const before = surfaces();
     if (!reduceMotion()) before.forEach(item => { item.frozen = freezeSurface(item.node); });
+    const newFloat=state.floating.find(id=>!previous.floating.includes(id));
+    const nextMain=M.top(state), changedMain=nextMain?.id!==M.top(previous)?.id;
+    if(newFloat) { activeWindowId=newFloat; toolsVisible=false; }
+    else if(changedMain && nextMain && !nextMain.members.includes(activeWindowId)) { activeWindowId=nextMain.members[0]; toolsVisible=false; }
     selection = null; closeMenu(); render();
     panes.forEach((node,id) => { if(node.isConnected && node.dataset.ready==='true') restorePosition(node,M.get(state,id)); });
     animateWindows(before,origin); persist(false); return true;
@@ -190,27 +196,75 @@
   }
   function raiseFloat(id) { M.raise(state,id); layoutFloats(); scheduleSave(); }
 
-  function setQuiet(node,quiet) {
-    node.classList.toggle('is-quiet',quiet); node.querySelector('.ep-tools-restore').hidden = !quiet;
-    const scene = node.closest('.ep-main-scene'); if (scene) scene.classList.toggle('is-quiet',quiet);
+  function syncChrome() {
+    const visible=[...(M.top(state)?.members || []),...state.floating];
+    if(!visible.includes(activeWindowId)) { activeWindowId=null; toolsVisible=false; }
+    panes.forEach((node,id)=>{
+      const active=id===activeWindowId, revealed=active && toolsVisible;
+      node.classList.toggle('is-active',active); node.classList.toggle('is-quiet',!revealed);
+      node.dataset.toolsVisible=String(revealed);
+      node.querySelectorAll('.ep-window-shortcuts,.ep-content-tools').forEach(n=>n.inert=!revealed);
+      const sheet=node.closest('.ep-sheet');
+      if(sheet) { sheet.classList.toggle('is-quiet',!revealed); sheet.classList.toggle('is-active',active); sheet.querySelector('.ep-window-shortcuts').inert=!revealed; }
+    });
+    const scene=M.top(state), shown=toolsVisible && scene?.members.includes(activeWindowId);
+    const sceneActions=q('.ep-scene-actions'); if(sceneActions) { sceneActions.inert=!shown; sceneActions.classList.toggle('is-hidden',!shown); }
+    phone.dataset.activeWindow=activeWindowId || '';
   }
+  function activateWindow(id, reveal=true) {
+    if(!M.get(state,id)) return;
+    if(activeWindowId!==id) { closeMenu(); activeWindowId=id; toolsVisible=false; }
+    if(state.floating.includes(id)) raiseFloat(id);
+    if(reveal) toolsVisible=true;
+    syncChrome();
+  }
+  function hideTools() { toolsVisible=false; closeMenu(); syncChrome(); }
+  function setQuiet(node,quiet) { if(quiet) { if(node.dataset.windowId===activeWindowId) hideTools(); } else activateWindow(node.dataset.windowId); }
   function watchScroll(node,scroll) {
-    let previous = 0, inputUntil = 0, distance = 0;
-    scroll._resetQuiet = () => { previous = scroll.scrollTop; distance = 0; };
-    scroll.addEventListener('wheel',() => inputUntil = performance.now() + 700,{passive:true});
-    scroll.addEventListener('touchstart',() => inputUntil = performance.now() + 1500,{passive:true});
-    scroll.addEventListener('touchmove',() => inputUntil = performance.now() + 1500,{passive:true});
-    scroll.addEventListener('scroll',() => {
-      const y = scroll.scrollTop, delta = y - previous; previous = y;
-      if (node.dataset.ready === 'true' && performance.now() > (node._suppressUntil || 0) && performance.now() < inputUntil) {
-        if (Math.sign(delta) !== Math.sign(distance)) distance = 0;
-        distance += delta;
-        if (distance > 24 && y > 60) { setQuiet(node,true); distance = 0; }
-        else if (distance < -16) { setQuiet(node,false); distance = 0; }
-      } else distance = 0;
+    let inputUntil=0, touchStart=null;
+    scroll._resetQuiet=()=>{};
+    const begin=()=>{ inputUntil=performance.now()+1500; if(node.dataset.windowId!==activeWindowId) activateWindow(node.dataset.windowId,false); hideTools(); };
+    scroll.addEventListener('wheel',begin,{passive:true});
+    scroll.addEventListener('touchstart',e=>{const t=e.touches[0];touchStart=t && {x:t.clientX,y:t.clientY};},{passive:true});
+    scroll.addEventListener('touchmove',e=>{ const t=e.touches[0]; if(t && touchStart && Math.abs(t.clientY-touchStart.y)>9 && Math.abs(t.clientY-touchStart.y)>Math.abs(t.clientX-touchStart.x)*1.25) begin(); },{passive:true});
+    scroll.addEventListener('keydown',e=>{if(e.target instanceof HTMLTextAreaElement || e.target.isContentEditable)return;if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(e.key))begin();});
+    scroll.addEventListener('scroll',()=>{
+      // Programmatic anchor restoration must not count as a reading gesture.
+      if(node.dataset.ready==='true' && performance.now()>(node._suppressUntil||0) && performance.now()<inputUntil && node.dataset.windowId===activeWindowId && toolsVisible) hideTools();
       scheduleSave();
     },{passive:true});
   }
+  function windowActions(id) {
+    const scene=M.top(state), floating=state.floating.includes(id), paired=scene?.members.length===2 && scene.members.includes(id);
+    const actions=floating ? [
+      {act:'pair',label:'对读',icon:'rows-2',disabled:!scene || scene.members.length!==1},
+      {act:'promote',label:'最大化',icon:'maximize-2'},
+      {act:'minimize',label:'收为悬浮标签',icon:'minus'},
+    ] : [...(paired ? [{act:'promote',label:'最大化此窗口',icon:'maximize-2'}] : []),{act:'move-float',label:paired?'移出对读，转为浮窗':'转为浮窗',icon:'panel-bottom'}];
+    actions.push({act:'pin',label:'复制为浮窗',icon:'copy'});
+    if(floating) for(const other of state.floating.filter(x=>x!==id)) actions.push({act:'raise-float',id:other,label:'切换到：'+title(M.get(state,other)),icon:'layers'});
+    actions.push({act:'close-window',label:'关闭窗口',icon:'x'});
+    return actions.map(a=>({id,...a}));
+  }
+  function contentActions(w) {
+    if(w.kind==='reading') {
+      const p=M.page(w), selected=!!citation(w.id)?.verse;
+      return [
+        {act:'prev',label:'上一章',icon:'chevron-left',disabled:p.book===1 && p.chapter===1},
+        {act:'next',label:'下一章',icon:'chevron-right',disabled:p.book===66 && p.chapter===22},
+        {act:'back',label:'浏览历史后退',icon:'undo-2',disabled:w.pageIndex===0},
+        {act:'forward',label:'浏览历史前进',icon:'redo-2',disabled:w.pageIndex===w.pages.length-1},
+        {act:'open-note',label:selected?'为选中经文记笔记':'记笔记（请先选中经文）',icon:'pen-line',disabled:!selected},
+        {act:'open-reference',label:selected?'研读选中经文':'研读（请先选中经文）',icon:'book-open',disabled:!selected},
+      ].map(a=>({id:w.id,...a}));
+    }
+    if(w.kind==='note') return [{act:'note-edit',label:panes.get(w.id)?.dataset.editing==='true'?'完成编辑':'编辑笔记',icon:panes.get(w.id)?.dataset.editing==='true'?'check':'pen-line',id:w.id}];
+    return [{act:'reference-reading',label:'查看引用经文',icon:'book-open',disabled:!w.citation?.book},{act:'open-note',label:'为引用经文记笔记',icon:'pen-line',disabled:!w.citation?.verse}].map(a=>({id:w.id,...a}));
+  }
+  function actionButtons(actions, compact=true) {
+    return actions.map(a=>button(a.act,a.label,a.icon,a.id,compact?'ep-icon':'ep-text').replace('<button ',`<button title="${esc(a.label)}"${a.disabled?' disabled':''} `)).join('');
+  }
+  function windowShortcuts(id) { return `<div class="ep-window-shortcuts" role="group" aria-label="窗口操作">${actionButtons(windowActions(id))}${button('pane-menu','窗口操作菜单','ellipsis',id)}</div>`; }
   function restorePosition(node,w) {
     node._suppressUntil = performance.now() + 400;
     const scroll = node.querySelector(w.kind === 'note' ? 'textarea' : '.ep-scroll');
@@ -223,9 +277,11 @@
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions = node.querySelector('.ep-pane-actions'), c = w.kind === 'reading' && citation(w.id);
-    actions.hidden = !c;
-    actions.innerHTML = c ? `<span class="ep-selected-ref">${esc(info(c.book)?.abbreviation)} ${c.chapter}:${c.verse}</span>` + button('open-reference','研读','book-open',w.id,'ep-text') + button('open-note','记笔记','pen-line',w.id,'ep-text') : '';
+    const actions=node.querySelector('.ep-pane-actions'), c=w.kind==='reading' && citation(w.id);
+    actions.hidden=false;
+    actions.innerHTML=`<span class="ep-content-context">${w.kind==='reading' ? c?.verse ? c.chapter+':'+c.verse : '经文' : w.kind==='note' ? '笔记' : '研读'}</span>${actionButtons(contentActions(w))}${button('content-menu',w.kind==='reading'?'经文操作菜单':w.kind==='note'?'笔记操作菜单':'研读操作菜单','ellipsis-vertical',w.id)}`;
+    actions.setAttribute('aria-label',w.kind==='reading'?'经文操作':w.kind==='note'?'笔记操作':'研读操作');
+    syncChrome();
   }
   function renderNote(node,w) {
     const preview = node.querySelector('.ep-note-preview'); if (!preview) return;
@@ -238,7 +294,8 @@
     preview.innerHTML = html + esc(text.slice(offset)) || '<span class="ep-note-placeholder">暂无正文，点击“编辑笔记”开始记录。</span>';
     const editing = node.dataset.editing === 'true';
     preview.hidden = editing; node.querySelector('textarea').hidden = !editing;
-    const toggle = node.querySelector('[data-act="note-edit"]'); toggle.textContent = editing ? '完成编辑' : '编辑笔记'; toggle.setAttribute('aria-pressed',String(editing));
+    paneActions(node,w);
+    node.querySelectorAll('[data-act="note-edit"]').forEach(toggle=>toggle.setAttribute('aria-pressed',String(editing)));
   }
   let referenceRequest = 0;
   async function openNoteScripture(b) {
@@ -257,14 +314,13 @@
   function ensurePane(w) {
     let node = panes.get(w.id);
     if (!node) {
-      node = document.createElement('section'); node.className = 'ep-pane'; node.dataset.windowId = w.id; node.setAttribute('aria-label',title(w));
-      node.innerHTML = `<header class="ep-pane-head"></header><div class="ep-scroll"></div><div class="ep-pane-actions"></div>${button('tools','显示阅读工具','ellipsis',w.id,'ep-icon ep-tools-restore')}`;
-      node.querySelector('.ep-tools-restore').hidden = true; panes.set(w.id,node); watchScroll(node,node.querySelector('.ep-scroll'));
+      node = document.createElement('section'); node.className = 'ep-pane is-quiet'; node.tabIndex=0; node.dataset.windowId = w.id; node.setAttribute('aria-label',title(w));
+      node.innerHTML = '<header class="ep-pane-head"></header><div class="ep-pane-actions ep-content-tools" role="group"></div><div class="ep-scroll"></div>';
+      panes.set(w.id,node); watchScroll(node,node.querySelector('.ep-scroll'));
     }
     const header = node.querySelector('.ep-pane-head'), float = state.floating.includes(w.id);
     node.setAttribute('aria-label',title(w));
-    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind === 'reading' ? 'reading-directory' : 'pane-menu'}" data-id="${esc(w.id)}" aria-label="${w.kind === 'reading' ? '选择书卷和章节' : '窗口操作'}"><span data-reading-title>${esc(title(w))}</span>${w.kind === 'reading' ? icon('chevron-down') : ''}</button>` + (w.kind === 'reading' ? button('back','浏览历史后退','arrow-left',w.id) + button('forward','浏览历史前进','arrow-right',w.id) : '') + (!float ? button('pane-menu','窗口更多操作','ellipsis',w.id) : '');
-    if (w.kind === 'reading') { header.querySelector('[data-act="back"]').disabled = w.pageIndex === 0; header.querySelector('[data-act="forward"]').disabled = w.pageIndex === w.pages.length - 1; }
+    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind === 'reading' ? 'reading-directory' : 'activate'}" data-id="${esc(w.id)}" aria-label="${w.kind === 'reading' ? '选择书卷和章节' : '显示窗口工具'}"><span data-reading-title>${esc(title(w))}</span>${w.kind === 'reading' ? icon('chevron-down') : ''}</button>` + (!float ? windowShortcuts(w.id) : '');
     const scroll = node.querySelector('.ep-scroll');
     if (w.kind === 'reading') {
       const p = M.page(w), key = `${p.book}:${p.chapter}`;
@@ -275,17 +331,14 @@
           const current=M.get(state,w.id), currentPage=M.page(current);
           if (node.dataset.page !== key || currentPage?.book !== p.book || currentPage?.chapter !== p.chapter) return;
           const verses = data.chapters[p.chapter-1]; if (!Array.isArray(verses) || !verses.length) throw Error('这一章未载入');
-          scroll.innerHTML = `<div class="ep-chapter-cover"><span class="ep-chapter-number">${String(p.chapter).padStart(2,'0')}</span><div><span class="ep-kicker">${esc(info(p.book).name)} · 和合本</span><h1>${p.book === 45 && p.chapter === 8 ? '在盼望中等候' : `第 ${p.chapter} 章`}</h1></div></div>` + verses.map(([n,words]) => `<button type="button" class="ep-verse${currentPage.selected === n ? ' is-selected' : ''}" data-verse="${n}" data-id="${esc(w.id)}" aria-label="${esc(info(p.book).name)} ${p.chapter}:${n}，选择经文" aria-pressed="${currentPage.selected === n}"><span class="ep-verse-number">${n}</span><span class="ep-verse-words">${esc(words)}</span></button>`).join('') + `<footer class="ep-reading-footer">${button('prev','上一章','arrow-left',w.id,'ep-text')}<span>和合本</span>${button('next','下一章','arrow-right',w.id,'ep-text')}</footer>`;
-          const first = p.book === 1 && p.chapter === 1, last = p.book === 66 && p.chapter === 22;
-          scroll.querySelector('[data-act="prev"]').disabled = first; scroll.querySelector('[data-act="next"]').disabled = last;
+          scroll.innerHTML = `<div class="ep-chapter-cover"><span class="ep-chapter-number">${String(p.chapter).padStart(2,'0')}</span><div><span class="ep-kicker">${esc(info(p.book).name)} · 和合本</span><h1>${p.book === 45 && p.chapter === 8 ? '在盼望中等候' : `第 ${p.chapter} 章`}</h1></div></div>` + verses.map(([n,words]) => `<button type="button" class="ep-verse${currentPage.selected === n ? ' is-selected' : ''}" data-verse="${n}" data-id="${esc(w.id)}" aria-label="${esc(info(p.book).name)} ${p.chapter}:${n}，选择经文" aria-pressed="${currentPage.selected === n}"><span class="ep-verse-number">${n}</span><span class="ep-verse-words">${esc(words)}</span></button>`).join('') + '<footer class="ep-reading-footer"><span>和合本</span></footer>';
           node.dataset.ready = 'true'; requestAnimationFrame(() => restorePosition(node,M.get(state,w.id))); icons();
         }).catch(() => { if (node.dataset.page === key) { node.dataset.ready = 'error'; scroll.innerHTML = `<p class="ep-empty">经文暂未载入。${button('retry','点击重试','rotate-cw',w.id,'ep-text')}</p>`; icons(); } });
       }
     } else if (!node.dataset.ready) {
       node.dataset.ready = 'true';
       if (w.kind === 'note') {
-        scroll.className = 'ep-scroll ep-note'; scroll.innerHTML = '<div class="ep-note-heading"><span class="ep-kicker">个人笔记</span><button type="button" class="ep-note-edit ep-text" data-act="note-edit">编辑笔记</button></div><div class="ep-note-preview" aria-label="笔记阅读正文"></div><textarea hidden aria-label="研读笔记正文" placeholder="此刻，你读到了什么？"></textarea><small class="ep-note-status">自动保存 · 保留编辑版本</small>';
-        scroll.querySelector('[data-act="note-edit"]').dataset.id = w.id;
+        scroll.className = 'ep-scroll ep-note'; scroll.innerHTML = '<div class="ep-note-heading"><span class="ep-kicker">个人笔记</span></div><div class="ep-note-preview" aria-label="笔记阅读正文"></div><textarea hidden aria-label="研读笔记正文" placeholder="此刻，你读到了什么？"></textarea><small class="ep-note-status">自动保存 · 保留编辑版本</small>';
         const area = scroll.querySelector('textarea'); area.value = state.notes[w.contentId].text; watchScroll(node,area);
         area.addEventListener('input',() => {
           state.notes[w.contentId].text = area.value; dirtyNotes.add(w.contentId);
@@ -296,8 +349,8 @@
       } else {
         const c=w.citation, supported=c?.book===45 && c.chapter===8 && [28,29].includes(c.verse);
         scroll.className = 'ep-scroll ep-reference';
-        if (!supported) scroll.innerHTML = `<span class="ep-kicker">研读 · ${esc(info(c?.book)?.name)} ${c?.chapter || ''}:${c?.verse || ''}</span><h2>经文研读</h2><p>${esc(c?.words || '')}</p><p class="ep-empty">本节暂无已接入的研读资料。</p><small class="ep-source-credit">当前为交互原型，不生成或套用其他经文的注释。</small><button class="ep-write-link" data-act="open-note" data-id="${esc(w.id)}">${icon('pen-line')}针对这节经文记笔记</button>`;
-        else scroll.innerHTML = `<span class="ep-kicker">研读札记 · 罗马书 8:${c.verse}</span><h2>益处，不止于顺境。</h2><p class="ep-lead">“万事互相效力”，不是说每一件事本身都是好的。</p><p>把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。</p><div class="ep-thought"><span class="ep-kicker">带着这个问题，再读一遍</span><p>我盼望的，是处境改变，<br>还是生命也被更新？</p></div><button class="ep-write-link" data-act="reference-reading" data-id="${esc(w.id)}">${icon('book-open')}再读罗马书 8:29${icon('arrow-up-right')}</button><button class="ep-write-link" data-act="open-note" data-id="${esc(w.id)}">${icon('pen-line')}写下我的回应</button><small class="ep-source-credit">原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。</small>`;
+        if (!supported) scroll.innerHTML = `<span class="ep-kicker">研读 · ${esc(info(c?.book)?.name)} ${c?.chapter || ''}:${c?.verse || ''}</span><h2>经文研读</h2><p>${esc(c?.words || '')}</p><p class="ep-empty">本节暂无已接入的研读资料。</p><small class="ep-source-credit">当前为交互原型，不生成或套用其他经文的注释。</small>`;
+        else scroll.innerHTML = `<span class="ep-kicker">研读札记 · 罗马书 8:${c.verse}</span><h2>益处，不止于顺境。</h2><p class="ep-lead">“万事互相效力”，不是说每一件事本身都是好的。</p><p>把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。</p><div class="ep-thought"><span class="ep-kicker">带着这个问题，再读一遍</span><p>我盼望的，是处境改变，<br>还是生命也被更新？</p></div><small class="ep-source-credit">原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。</small>`;
       }
     }
     if (w.kind === 'note') renderNote(node,w);
@@ -310,7 +363,7 @@
     if (!scene) renderDirectory(main,rootCatalog,true);
     else {
       const wrap = document.createElement('div'); wrap.className = 'ep-main-scene' + (scene.members.length === 2 ? ' ep-paired' : ''); wrap.dataset.sceneId = scene.id;
-      wrap.innerHTML = `<header class="ep-scene-head">${button('drawer','打开后台','panel-left')}<span>${scene.members.length === 2 ? '上下对读' : 'EMMAUS'}</span>${scene.members.length === 2 ? button('scene-menu','组合更多操作','ellipsis',scene.id) : button('close-scene','关闭主阅读窗口','x',scene.id)}</header><div class="ep-scene-body"></div>`;
+      wrap.innerHTML = `<header class="ep-scene-head">${button('drawer','打开后台','panel-left')}<span>${scene.members.length === 2 ? '上下对读' : 'EMMAUS'}</span>${scene.members.length === 2 ? `<div class="ep-scene-actions" role="group" aria-label="对读组合操作">${button('unpair','拆除对读，上窗置顶','rows-2',scene.id)}${button('close-scene','关闭整个组合','x',scene.id)}${button('scene-menu','组合操作菜单','ellipsis',scene.id)}</div>` : ''}</header><div class="ep-scene-body"></div>`;
       const body = wrap.querySelector('.ep-scene-body');
       scene.members.forEach((id,index) => { if (index) { const div = document.createElement('button'); div.type = 'button'; div.className = 'ep-divider'; div.dataset.scene = scene.id; div.setAttribute('aria-label','调整上下窗口比例'); div.setAttribute('role','separator'); div.setAttribute('aria-orientation','horizontal'); div.innerHTML = '<span></span>'; body.append(div); } body.append(ensurePane(M.get(state,id))); });
       if (scene.members.length === 2) body.style.gridTemplateRows = `minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`;
@@ -323,16 +376,15 @@
       if (!sheet) { sheet = document.createElement('article'); sheet.className = 'ep-sheet'; sheet.dataset.windowId = id; sheet.dataset.presentation = 'floating'; slot.append(sheet); }
       sheet.setAttribute('aria-label','浮窗：'+title(w));
       let bar = sheet.querySelector('.ep-sheet-bar'); if (!bar) { bar = document.createElement('header'); bar.className = 'ep-sheet-bar'; sheet.prepend(bar); }
-      bar.innerHTML = `<button class="ep-handle" data-id="${esc(id)}" aria-label="上下移动浮窗" title="拖动上下移动，方向键微调" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span>${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + button('pair','对读','rows-2',id,'ep-text') + button('promote','最大化','maximize-2',id) + button('minimize','收为悬浮标签','minus',id) + button('pane-menu','浮窗更多操作','ellipsis',id);
+      bar.innerHTML = `<button class="ep-handle" data-id="${esc(id)}" aria-label="上下移动浮窗" title="拖动上下移动，点按显示工具" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span class="ep-window-kind">${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + windowShortcuts(id);
       bar.insertAdjacentHTML('beforeend','<span class="ep-sheet-rule" aria-hidden="true"></span>');
-      bar.querySelector('[data-act="pair"]').disabled = !scene || scene.members.length !== 1;
       sheet.querySelector('.ep-resize')?.remove();
       sheet.append(ensurePane(w));
       sheet.insertAdjacentHTML('beforeend',`<button class="ep-resize" data-id="${esc(id)}" aria-label="调整浮窗高度" title="拖动下边缘调整高度" type="button"><span></span></button>`);
     }
     layoutFloats();
     q('.ep-tabs').innerHTML = state.tabs.map(t => { const w = M.get(state,t.id); return `<div class="ep-tab-item"><button class="ep-tab" data-tab="${esc(t.id)}" aria-label="以浮窗打开：${esc(title(w))}">${icon(w.kind === 'note' ? 'notebook-pen' : 'book-open')}<span>${esc(title(w))}</span></button>${button('close-window','关闭标签：'+title(w),'x',t.id,'ep-icon ep-tab-close')}</div>`; }).join('');
-    renderSaved(); icons(); updateInert();
+    renderSaved(); icons(); updateInert(); syncChrome();
     requestAnimationFrame(() => panes.forEach((node,id) => { if (node.isConnected && node.dataset.ready === 'true') restorePosition(node,M.get(state,id)); }));
   }
   function renderSaved() {
@@ -340,14 +392,14 @@
     q('.ep-saved-list').innerHTML = [...state.scenes].reverse().map(scene => `<button class="ep-nav-row${scene === M.top(state) ? ' is-current' : ''}" data-resume="${esc(scene.id)}">${icon(scene.members.length === 2 ? 'rows-2' : 'book-open')}<span>${esc(sceneTitle(scene))}<small>${scene === M.top(state) ? '当前阅读' : '点按最大化继续'}${scene.members.length === 2 ? ' · 双窗' : ''}</small></span></button>`).join('') || '<p class="ep-empty">留下的阅读现场，会在这里继续。</p>';
   }
   function closeMenu() { menuTarget = null; q('.ep-popover').hidden = q('.ep-menu-scrim').hidden = true; }
-  function menu(id,anchor,isScene=false) {
-    closeMenu(); menuTarget = id; const panel = q('.ep-popover'), w = M.get(state,id);
-    panel.innerHTML = isScene ? button('unpair','拆除对读，上窗置顶','rows-2',id,'ep-text') + button('close-scene','关闭整个组合','x',id,'ep-text') : (state.floating.includes(id) ? button('promote','最大化','maximize-2',id,'ep-text') + button('minimize','收为悬浮标签','minus',id,'ep-text') : button('move-float',M.top(state)?.members.length===2 && M.top(state).members.includes(id) ? '移出对读，转为浮窗' : '转为浮窗','panel-bottom',''+id,'ep-text') + button('pin','复制为浮窗','pin',id,'ep-text')) + (w?.kind === 'reading' && citation(id) ? button('open-note','为选中经文记笔记','pen-line',id,'ep-text') : '') + button('close-window','关闭窗口','x',id,'ep-text');
-    if (state.floating.includes(id)) { panel.insertAdjacentHTML('beforeend',button('pin','复制为浮窗','copy',id,'ep-text')); for (const other of state.floating.filter(x=>x!==id)) panel.insertAdjacentHTML('beforeend',button('raise-float','切换到：'+title(M.get(state,other)),'layers',other,'ep-text')); }
-    if (w?.kind === 'reference') panel.insertAdjacentHTML('beforeend',button('reference-reading','打开所引经文','book-open',id,'ep-text'));
-    if (w?.kind === 'reading') panel.insertAdjacentHTML('beforeend',button('prev','上一章','chevron-left',id,'ep-text') + button('next','下一章','chevron-right',id,'ep-text'));
-    panel.hidden = q('.ep-menu-scrim').hidden = false; const a = anchor.getBoundingClientRect(), p = phone.getBoundingClientRect();
-    panel.style.left = clamp(a.right-p.left-220,12,phone.clientWidth-232) + 'px'; panel.style.top = clamp(a.bottom-p.top+5,12,phone.clientHeight-panel.offsetHeight-15) + 'px'; icons();
+  function menu(id,anchor,isScene=false,isContent=false) {
+    closeMenu(); menuTarget = id; const panel=q('.ep-popover'), w=M.get(state,id);
+    const label=isScene?'对读组合操作':isContent ? w?.kind==='reading'?'经文操作':w?.kind==='note'?'笔记操作':'研读操作' : '窗口操作';
+    const actions=isScene ? [{act:'unpair',label:'拆除对读，上窗置顶',icon:'rows-2',id},{act:'close-scene',label:'关闭整个组合',icon:'x',id}] : isContent ? contentActions(w) : windowActions(id);
+    panel.setAttribute('aria-label',label); panel.dataset.scope=isScene?'scene':isContent?'content':'window';
+    panel.innerHTML=`<span class="ep-menu-label">${label}</span>`+actionButtons(actions,false);
+    panel.hidden = q('.ep-menu-scrim').hidden = false; const a=anchor.getBoundingClientRect(), p=phone.getBoundingClientRect();
+    panel.style.left=clamp(a.right-p.left-220,12,phone.clientWidth-232)+'px'; panel.style.top=clamp(a.bottom-p.top+5,12,Math.max(12,phone.clientHeight-panel.offsetHeight-15))+'px'; icons();
   }
   function updateInert() {
     const capacityOpen = !q('.ep-capacity').hidden;
@@ -430,7 +482,11 @@
 
   phone.addEventListener('click',event => {
     if (performance.now() < ignoreClickUntil) { event.preventDefault(); return; }
+    const surface=event.target.closest('.ep-pane,.ep-sheet'), tappedId=surface?.dataset.windowId;
+    const wasRevealed=tappedId===activeWindowId && toolsVisible;
+    if(tappedId) activateWindow(tappedId);
     const b = event.target.closest('button'); if (!b || b.disabled) return;
+    if(b.classList.contains('ep-pane-title') && !wasRevealed) return;
     motionOrigin = b.getBoundingClientRect();
     if (b.dataset.tab) { change(() => M.openFloat(state,b.dataset.tab,'打开悬浮标签')); return; }
     if (b.dataset.resume) { drawer(false); change(() => M.resume(state,b.dataset.resume)); return; }
@@ -454,7 +510,8 @@
         if(pending) change(()=>{ if(act==='capacity-minimize') M.minimize(state,id); else M.closeWindow(state,id); pending.callback(); },pending.origin);
         break;
       }
-      case 'raise-float': closeMenu(); raiseFloat(id); break;
+      case 'raise-float': closeMenu(); activateWindow(id); break;
+      case 'activate': activateWindow(id); break;
       case 'drawer': drawer(true); break;
       case 'drawer-close': drawer(false); break;
       case 'root-directory': drawer(false); change(() => { state.atDirectory = true; rootCatalog = {book:null,testament:'旧约'}; }); break;
@@ -464,7 +521,7 @@
       case 'directory-back': if (catalog) { catalog.book = null; catalog.busy = false; catalog.request = (catalog.request || 0)+1; renderDirectory(isRoot ? q('.ep-main') : q('.ep-directory'),catalog,isRoot); } break;
       case 'note-edit': {
         const node=panes.get(id), w=M.get(state,id); if(w?.kind!=='note') break; referenceRequest++;
-        node.dataset.editing=String(node.dataset.editing!=='true'); renderNote(node,w);
+        closeMenu(); node.dataset.editing=String(node.dataset.editing!=='true'); renderNote(node,w); icons();
         if(node.dataset.editing==='true') node.querySelector('textarea').focus({preventScroll:true});
         else { flushNotes(); persist(); } break;
       }
@@ -475,7 +532,7 @@
         if (!c?.verse) { announce('请先选中一节经文'); break; }
         change(() => M.openNew(state,'reference',{citation:c,sourceWindowId:id})); break;
       }
-      case 'reference-reading': change(() => M.openNew(state,'reading',{book:45,chapter:8,verse:29,sourceWindowId:id})); break;
+      case 'reference-reading': { const c=M.get(state,id)?.citation; if(c?.book) change(()=>M.openNew(state,'reading',{book:c.book,chapter:c.chapter,verse:c.book===45 && c.chapter===8 && [28,29].includes(c.verse) ? 29 : c.verse,sourceWindowId:id})); break; }
       case 'promote': change(() => M.promote(state,id)); break;
       case 'minimize': change(() => M.minimize(state,id)); break;
       case 'move-float': change(() => M.openFloat(state,id,'主窗口变为浮窗')); break;
@@ -485,6 +542,7 @@
       case 'close-window': change(() => M.closeWindow(state,id)); break;
       case 'close-scene': change(() => M.closeScene(state,id)); break;
       case 'pane-menu': menu(id,b); break;
+      case 'content-menu': menu(id,b,false,true); break;
       case 'scene-menu': menu(id,b,true); break;
       case 'menu-close': closeMenu(); break;
       case 'next': closeMenu(); navigate(id,1); break;
@@ -502,14 +560,14 @@
 
   // A floating sheet is NOT modal: only its own boundary consumes wheel/touch input.
   phone.addEventListener('wheel',event => {
-    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card');
+    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card,.ep-popover');
     if (!scroller || (event.deltaY < 0 && scroller.scrollTop <= 0) || (event.deltaY > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) event.preventDefault();
   },{passive:false});
   let touchY = null;
   phone.addEventListener('touchstart',event => touchY = event.touches[0]?.clientY,{passive:true});
   phone.addEventListener('touchmove',event => {
     if (touchY == null) return; const y = event.touches[0]?.clientY, delta = touchY - y; touchY = y;
-    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card');
+    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card,.ep-popover');
     if (!scroller || (delta < 0 && scroller.scrollTop <= 0) || (delta > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) { if (event.cancelable) event.preventDefault(); }
   },{passive:false});
   phone.addEventListener('pointerdown',event => {
@@ -526,8 +584,8 @@
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)*1.25 && ((g.canOpen && dx > 0) || (g.wasOpen && dx < 0))) {
         g.mode = 'drawer'; clearTimeout(drawerTimer); closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; renderSaved(); icons(); q('.ep-drawer').hidden = q('.ep-drawer-scrim').hidden = false;
       } else if (g.handle && Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)*1.25) g.mode = g.handle.classList.contains('ep-divider') ? 'divider' : g.handle.classList.contains('ep-resize') ? 'height' : 'move';
-      else if (Math.abs(dy) > 14 && !g.handle) { gesture = null; return; }
-      if (g.mode) { phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
+      else if (Math.abs(dy) > 14 && !g.handle) { ignoreClickUntil=performance.now()+500; gesture = null; return; }
+      if (g.mode) { if(g.id && ['height','move'].includes(g.mode)) { activateWindow(g.id,false); hideTools(); } phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
     }
     if (!g.mode) return; event.preventDefault();
     if (g.mode === 'drawer') {
@@ -554,9 +612,10 @@
   phone.addEventListener('pointercancel',event => endGesture(event,true),true);
   phone.addEventListener('keydown',event => {
     if (event.key === 'Escape') {
-      if (!q('.ep-capacity').hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else qa('.ep-pane.is-quiet').forEach(n => setQuiet(n,false));
+      if (!q('.ep-capacity').hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else hideTools();
       event.preventDefault(); return;
     }
+    if(event.target.classList.contains('ep-pane') && ['Enter',' '].includes(event.key)) { event.preventDefault(); activateWindow(event.target.dataset.windowId); return; }
     const handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');
     if (handle && ['ArrowUp','ArrowDown'].includes(event.key)) {
       event.preventDefault(); const delta = event.key === 'ArrowUp' ? -24 : 24;
