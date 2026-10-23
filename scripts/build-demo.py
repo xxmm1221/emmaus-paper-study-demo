@@ -64,7 +64,7 @@ migration_backup = '''<script>
 try {
   const key='codex:visualization-widget-state-v2:'+JSON.stringify([location.pathname,location.search]);
   const old=localStorage.getItem(key),version=old&&JSON.parse(old)?.privateContent?.version;
-  if([3,4,5].includes(version)&&!localStorage.getItem(key+':before-v6'))localStorage.setItem(key+':before-v6',old);
+  if([3,4,5,6].includes(version)&&!localStorage.getItem(key+':before-v7'))localStorage.setItem(key+':before-v7',old);
 }catch(_){}
 </script>'''
 page = page.replace('</head>', outer_css + migration_backup + '\n</head>', 1)
@@ -79,9 +79,14 @@ page = page[:match.start(2)] + html.escape(frame, quote=True) + page[match.end(2
 bridge = '''<script>
 (() => {
   const frame=document.getElementById('codex-visualization'),cache=new Map();
+  const sendViewport=()=>{const v=window.visualViewport;frame.contentWindow?.postMessage({type:'emmaus-visible-viewport',bottom:(v ? v.offsetTop+v.height : innerHeight)-frame.getBoundingClientRect().top},'*');};
+  window.visualViewport?.addEventListener('resize',sendViewport);
+  window.visualViewport?.addEventListener('scroll',sendViewport);
+  window.addEventListener('resize',sendViewport); frame.addEventListener('load',sendViewport);
   window.addEventListener('message',async event=>{
     const request=event.data;
-    if(event.source===frame.contentWindow&&request?.type==='emmaus-export-request'&&request.data?.version===6){
+    if(event.source===frame.contentWindow && request?.type==='emmaus-viewport-request'){sendViewport();return;}
+    if(event.source===frame.contentWindow&&request?.type==='emmaus-export-request'&&request.data?.version===7){
       const blob=new Blob([JSON.stringify(request.data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download='Emmaus-reading-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return;
     }

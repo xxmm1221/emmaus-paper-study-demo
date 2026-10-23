@@ -53,7 +53,7 @@
     try {
       M.assert(state);
       const snapshot = M.copy(state); snapshot.sender = stamp;
-      const saved = window.openai?.setWidgetState({modelContent:{design:'纸间研读',main:M.top(state)?.members.length || 0,floating:!!state.floating,tabs:state.tabs.length,history:state.events.length},privateContent:snapshot});
+      const saved = window.openai?.setWidgetState({modelContent:{design:'纸间研读',main:M.top(state)?.members.length || 0,floating:state.floating.length,tabs:state.tabs.length,history:state.events.length},privateContent:snapshot});
       if (!saved) throw Error('本地保存不可用');
       Promise.resolve(saved).then(() => { if (serial === saveSerial) q('.ep-storage-error').hidden = true; },() => { if (serial === saveSerial) q('.ep-storage-error').hidden = false; });
     } catch (_) { q('.ep-storage-error').hidden = false; }
@@ -83,7 +83,7 @@
     const result = new Map();
     qa('.ep-main .ep-pane,.ep-sheet,.ep-tabs .ep-tab').forEach(node => {
       const id = node.dataset.windowId || node.dataset.tab;
-      if (id) result.set(id,{node,rect:node.getBoundingClientRect(),radius:getComputedStyle(node).borderRadius,shadow:getComputedStyle(node).boxShadow});
+      if (id) result.set(id,{node,placement:node.closest('.ep-main') ? 'main' : node.classList.contains('ep-sheet') ? 'float' : 'tab',rect:node.getBoundingClientRect(),radius:getComputedStyle(node).borderRadius,shadow:getComputedStyle(node).boxShadow});
     });
     return result;
   }
@@ -91,7 +91,7 @@
   function flySurface(from, to, source, destination, target, id, retiring=false) {
     const bounds = phone.getBoundingClientRect(), shell = document.createElement('div');
     shell.dataset.motionGhost = id; shell.setAttribute('aria-hidden','true'); shell.inert = true;
-    Object.assign(shell.style,{position:'absolute',left:from.left-bounds.left-phone.clientLeft+'px',top:from.top-bounds.top-phone.clientTop+'px',width:from.width+'px',height:from.height+'px',overflow:'hidden',pointerEvents:'none',zIndex:retiring?6:12,background:'var(--paper)',boxShadow:source?.shadow || 'none',borderRadius:source?.radius || '20px',transformOrigin:'0 0'});
+    Object.assign(shell.style,{position:'absolute',left:from.left-bounds.left-phone.clientLeft+'px',top:from.top-bounds.top-phone.clientTop+'px',width:from.width+'px',height:from.height+'px',overflow:'hidden',pointerEvents:'none',zIndex:((source?.placement==='main' && (!destination || destination.placement==='main')) || (!source && destination?.placement==='main')) ? 4 : retiring?6:12,background:'var(--paper)',boxShadow:source?.shadow || 'none',borderRadius:source?.radius || '20px',transformOrigin:'0 0'});
     const oldLayer = source?.frozen, newLayer = destination?.frozen;
     if (oldLayer) shell.append(oldLayer.clone);
     if (newLayer) shell.append(newLayer.clone);
@@ -139,14 +139,56 @@
       flySurface(item.rect,to,item,null,null,id,true);
     });
   }
-  function change(callback, origin = motionOrigin) {
-    finishWindowMotions(); capture(); flushNotes(); const before = surfaces();
-    if (!reduceMotion()) before.forEach(item => { item.frozen = freezeSurface(item.node); });
-    selection = null; closeMenu(); callback(); render();
-    // Restore scroll before taking destination snapshots, not during a scaled frame.
-    panes.forEach((node,id) => { if(node.isConnected && node.dataset.ready==='true') restorePosition(node,M.get(state,id)); });
-    animateWindows(before,origin); persist(false);
+  let pendingCapacity = null, capacityFocus = null;
+  function closeCapacity() {
+    q('.ep-capacity').hidden = true; pendingCapacity = null; updateInert();
+    if (capacityFocus?.isConnected) capacityFocus.focus({preventScroll:true});
   }
+  function showCapacity(error, callback, origin) {
+    closeMenu(); capacityFocus = document.activeElement;
+    pendingCapacity = {callback,origin}; const isFloat = error.code === 'FLOAT_LIMIT';
+    const ids = isFloat ? [...state.floating].reverse() : state.tabs.map(t=>t.id);
+    q('.ep-capacity').innerHTML = `<div class="ep-capacity-card"><span class="ep-kicker">保留你的阅读现场</span><h2>${isFloat ? '已有两个浮窗' : '三个标签已满'}</h2><p>${isFloat ? '旧浮窗不会被自动替换。选择一个收起或关闭，再继续刚才的操作。' : '标签不会自动回收。关闭一个标签，再继续收起当前窗口。'}</p><div class="ep-capacity-list">${ids.map(id=>`<article><strong>${esc(title(M.get(state,id)))}</strong><div>${isFloat && state.tabs.length<3 ? button('capacity-minimize','收为标签并继续','minus',id,'ep-text') : ''}${button('capacity-close',isFloat ? '关闭浮窗并继续' : '关闭标签并继续','x',id,'ep-text')}</div></article>`).join('')}</div><small>${isFloat && state.tabs.length>=3 ? '标签也已满；如需保留窗口，可取消后将一个浮窗最大化。' : '关闭只移除窗口入口，笔记与阅读记录仍留在历史中。'}</small>${button('capacity-cancel','取消，保持原样',null,null,'ep-text')}</div>`;
+    q('.ep-capacity').hidden = false; icons(); updateInert();
+    q('[data-act="capacity-cancel"]').focus({preventScroll:true});
+  }
+  function change(callback, origin = motionOrigin) {
+    finishWindowMotions(); capture(); flushNotes();
+    // Execute against a draft: rejection never changes placement, creates phantom
+    // notes, loses the selected verse, or leaves a half-completed compound action.
+    const previous = state; state = M.copy(state);
+    try { callback(); M.assert(state); }
+    catch (error) {
+      state = previous;
+      if (['FLOAT_LIMIT','TAB_LIMIT'].includes(error.code)) { showCapacity(error,callback,origin); return false; }
+      throw error;
+    }
+    const before = surfaces();
+    if (!reduceMotion()) before.forEach(item => { item.frozen = freezeSurface(item.node); });
+    selection = null; closeMenu(); render();
+    panes.forEach((node,id) => { if(node.isConnected && node.dataset.ready==='true') restorePosition(node,M.get(state,id)); });
+    animateWindows(before,origin); persist(false); return true;
+  }
+  let hostViewportBottom = Infinity;
+  function floatGeometry(w) {
+    const h = phone.clientHeight, available = Math.max(100,Math.min(h,window.visualViewport?.height || h,hostViewportBottom-phone.getBoundingClientRect().top));
+    const topInset = Math.max(12,parseFloat(getComputedStyle(phone).getPropertyValue('--safe-top')) || 0);
+    const bottomInset = Math.max(12,parseFloat(getComputedStyle(phone).getPropertyValue('--safe-bottom')) || 0);
+    const height = clamp((w.height || .4)*h,Math.min(205,available-topInset-bottomInset),available-topInset-bottomInset);
+    return {height,top:clamp((w.floatTop ?? .98-w.height)*h,topInset,available-bottomInset-height),available,topInset,bottomInset};
+  }
+  function layoutFloats() {
+    let reserve = 100;
+    qa('.ep-sheet').forEach(sheet=>{
+      const w=M.get(state,sheet.dataset.windowId); if(!w) return;
+      const g=floatGeometry(w); sheet.style.top=g.top+'px'; sheet.style.height=g.height+'px';
+      sheet.style.zIndex=String(state.floating.indexOf(w.id)+1);
+      sheet.dataset.front=String(state.floating.at(-1)===w.id);
+      reserve=Math.max(reserve,phone.clientHeight-g.top+30);
+    });
+    q('.ep-main').style.setProperty('--floating-space',reserve+'px');
+  }
+  function raiseFloat(id) { M.raise(state,id); layoutFloats(); scheduleSave(); }
 
   function setQuiet(node,quiet) {
     node.classList.toggle('is-quiet',quiet); node.querySelector('.ep-tools-restore').hidden = !quiet;
@@ -219,7 +261,7 @@
       node.innerHTML = `<header class="ep-pane-head"></header><div class="ep-scroll"></div><div class="ep-pane-actions"></div>${button('tools','显示阅读工具','ellipsis',w.id,'ep-icon ep-tools-restore')}`;
       node.querySelector('.ep-tools-restore').hidden = true; panes.set(w.id,node); watchScroll(node,node.querySelector('.ep-scroll'));
     }
-    const header = node.querySelector('.ep-pane-head'), float = state.floating === w.id;
+    const header = node.querySelector('.ep-pane-head'), float = state.floating.includes(w.id);
     node.setAttribute('aria-label',title(w));
     header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind === 'reading' ? 'reading-directory' : 'pane-menu'}" data-id="${esc(w.id)}" aria-label="${w.kind === 'reading' ? '选择书卷和章节' : '窗口操作'}"><span data-reading-title>${esc(title(w))}</span>${w.kind === 'reading' ? icon('chevron-down') : ''}</button>` + (w.kind === 'reading' ? button('back','浏览历史后退','arrow-left',w.id) + button('forward','浏览历史前进','arrow-right',w.id) : '') + (!float ? button('pane-menu','窗口更多操作','ellipsis',w.id) : '');
     if (w.kind === 'reading') { header.querySelector('[data-act="back"]').disabled = w.pageIndex === 0; header.querySelector('[data-act="forward"]').disabled = w.pageIndex === w.pages.length - 1; }
@@ -230,12 +272,13 @@
         node.dataset.page = key; node.dataset.ready = 'loading'; scroll.className = 'ep-scroll ep-reading-scroll';
         scroll.innerHTML = '<p class="ep-empty">经文正在展开…</p>';
         loadBook(p.book).then(data => {
-          if (node.dataset.page !== key || M.page(w)?.book !== p.book || M.page(w)?.chapter !== p.chapter) return;
+          const current=M.get(state,w.id), currentPage=M.page(current);
+          if (node.dataset.page !== key || currentPage?.book !== p.book || currentPage?.chapter !== p.chapter) return;
           const verses = data.chapters[p.chapter-1]; if (!Array.isArray(verses) || !verses.length) throw Error('这一章未载入');
-          scroll.innerHTML = `<div class="ep-chapter-cover"><span class="ep-chapter-number">${String(p.chapter).padStart(2,'0')}</span><div><span class="ep-kicker">${esc(info(p.book).name)} · 和合本</span><h1>${p.book === 45 && p.chapter === 8 ? '在盼望中等候' : `第 ${p.chapter} 章`}</h1></div></div>` + verses.map(([n,words]) => `<button type="button" class="ep-verse${p.selected === n ? ' is-selected' : ''}" data-verse="${n}" data-id="${esc(w.id)}" aria-label="${esc(info(p.book).name)} ${p.chapter}:${n}，选择经文" aria-pressed="${p.selected === n}"><span class="ep-verse-number">${n}</span><span class="ep-verse-words">${esc(words)}</span></button>`).join('') + `<footer class="ep-reading-footer">${button('prev','上一章','arrow-left',w.id,'ep-text')}<span>和合本</span>${button('next','下一章','arrow-right',w.id,'ep-text')}</footer>`;
+          scroll.innerHTML = `<div class="ep-chapter-cover"><span class="ep-chapter-number">${String(p.chapter).padStart(2,'0')}</span><div><span class="ep-kicker">${esc(info(p.book).name)} · 和合本</span><h1>${p.book === 45 && p.chapter === 8 ? '在盼望中等候' : `第 ${p.chapter} 章`}</h1></div></div>` + verses.map(([n,words]) => `<button type="button" class="ep-verse${currentPage.selected === n ? ' is-selected' : ''}" data-verse="${n}" data-id="${esc(w.id)}" aria-label="${esc(info(p.book).name)} ${p.chapter}:${n}，选择经文" aria-pressed="${currentPage.selected === n}"><span class="ep-verse-number">${n}</span><span class="ep-verse-words">${esc(words)}</span></button>`).join('') + `<footer class="ep-reading-footer">${button('prev','上一章','arrow-left',w.id,'ep-text')}<span>和合本</span>${button('next','下一章','arrow-right',w.id,'ep-text')}</footer>`;
           const first = p.book === 1 && p.chapter === 1, last = p.book === 66 && p.chapter === 22;
           scroll.querySelector('[data-act="prev"]').disabled = first; scroll.querySelector('[data-act="next"]').disabled = last;
-          node.dataset.ready = 'true'; requestAnimationFrame(() => restorePosition(node,w)); icons();
+          node.dataset.ready = 'true'; requestAnimationFrame(() => restorePosition(node,M.get(state,w.id))); icons();
         }).catch(() => { if (node.dataset.page === key) { node.dataset.ready = 'error'; scroll.innerHTML = `<p class="ep-empty">经文暂未载入。${button('retry','点击重试','rotate-cw',w.id,'ep-text')}</p>`; icons(); } });
       }
     } else if (!node.dataset.ready) {
@@ -273,19 +316,22 @@
       if (scene.members.length === 2) body.style.gridTemplateRows = `minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`;
       main.append(wrap);
     }
-    const w = M.get(state,state.floating);
-    main.style.setProperty('--floating-space',w ? clamp((w.height || .4)*phone.clientHeight,205,phone.clientHeight-24)+65+'px' : '100px');
-    if (w) {
-      let sheet = slot.querySelector('.ep-sheet');
-      if (sheet?.dataset.windowId !== w.id) { sheet = document.createElement('article'); sheet.className = 'ep-sheet'; sheet.dataset.windowId = w.id; sheet.setAttribute('aria-label','临时阅读浮窗'); sheet.dataset.presentation = 'floating'; slot.replaceChildren(sheet); }
-      sheet.style.height = clamp((w.height || .4) * phone.clientHeight,205,phone.clientHeight-24) + 'px';
+    for (const sheet of [...slot.children]) if (!state.floating.includes(sheet.dataset.windowId)) sheet.remove();
+    for (const id of state.floating) {
+      const w=M.get(state,id);
+      let sheet = [...slot.children].find(n=>n.dataset.windowId===id);
+      if (!sheet) { sheet = document.createElement('article'); sheet.className = 'ep-sheet'; sheet.dataset.windowId = id; sheet.dataset.presentation = 'floating'; slot.append(sheet); }
+      sheet.setAttribute('aria-label','浮窗：'+title(w));
       let bar = sheet.querySelector('.ep-sheet-bar'); if (!bar) { bar = document.createElement('header'); bar.className = 'ep-sheet-bar'; sheet.prepend(bar); }
-      bar.innerHTML = `<button class="ep-handle" data-id="${esc(w.id)}" aria-label="调整浮窗高度" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span>${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + button('pair','对读','rows-2',w.id,'ep-text') + button('promote','最大化','maximize-2',w.id) + button('minimize','收为悬浮标签','minus',w.id) + button('pane-menu','浮窗更多操作','ellipsis',w.id);
+      bar.innerHTML = `<button class="ep-handle" data-id="${esc(id)}" aria-label="上下移动浮窗" title="拖动上下移动，方向键微调" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span>${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + button('pair','对读','rows-2',id,'ep-text') + button('promote','最大化','maximize-2',id) + button('minimize','收为悬浮标签','minus',id) + button('pane-menu','浮窗更多操作','ellipsis',id);
       bar.insertAdjacentHTML('beforeend','<span class="ep-sheet-rule" aria-hidden="true"></span>');
       bar.querySelector('[data-act="pair"]').disabled = !scene || scene.members.length !== 1;
+      sheet.querySelector('.ep-resize')?.remove();
       sheet.append(ensurePane(w));
-    } else slot.replaceChildren();
-    q('.ep-tabs').innerHTML = state.tabs.map(t => { const w = M.get(state,t.id); return `<button class="ep-tab" data-tab="${esc(t.id)}" aria-label="以浮窗打开：${esc(title(w))}">${icon(w.kind === 'note' ? 'notebook-pen' : 'book-open')}<span>${esc(title(w))}</span></button>`; }).join('');
+      sheet.insertAdjacentHTML('beforeend',`<button class="ep-resize" data-id="${esc(id)}" aria-label="调整浮窗高度" title="拖动下边缘调整高度" type="button"><span></span></button>`);
+    }
+    layoutFloats();
+    q('.ep-tabs').innerHTML = state.tabs.map(t => { const w = M.get(state,t.id); return `<div class="ep-tab-item"><button class="ep-tab" data-tab="${esc(t.id)}" aria-label="以浮窗打开：${esc(title(w))}">${icon(w.kind === 'note' ? 'notebook-pen' : 'book-open')}<span>${esc(title(w))}</span></button>${button('close-window','关闭标签：'+title(w),'x',t.id,'ep-icon ep-tab-close')}</div>`; }).join('');
     renderSaved(); icons(); updateInert();
     requestAnimationFrame(() => panes.forEach((node,id) => { if (node.isConnected && node.dataset.ready === 'true') restorePosition(node,M.get(state,id)); }));
   }
@@ -296,16 +342,19 @@
   function closeMenu() { menuTarget = null; q('.ep-popover').hidden = q('.ep-menu-scrim').hidden = true; }
   function menu(id,anchor,isScene=false) {
     closeMenu(); menuTarget = id; const panel = q('.ep-popover'), w = M.get(state,id);
-    panel.innerHTML = isScene ? button('unpair','拆分为两个主窗口','rows-2',id,'ep-text') + button('close-scene','关闭整个组合','x',id,'ep-text') : (state.floating === id ? button('promote','最大化','maximize-2',id,'ep-text') + button('minimize','收为悬浮标签','minus',id,'ep-text') : button('move-float','变为浮窗','panel-bottom',''+id,'ep-text') + button('pin','固定此处为浮窗','pin',id,'ep-text')) + (w?.kind === 'reading' && citation(id) ? button('open-note','为选中经文记笔记','pen-line',id,'ep-text') : '') + button('close-window','关闭窗口','x',id,'ep-text');
+    panel.innerHTML = isScene ? button('unpair','拆除对读，上窗置顶','rows-2',id,'ep-text') + button('close-scene','关闭整个组合','x',id,'ep-text') : (state.floating.includes(id) ? button('promote','最大化','maximize-2',id,'ep-text') + button('minimize','收为悬浮标签','minus',id,'ep-text') : button('move-float',M.top(state)?.members.length===2 && M.top(state).members.includes(id) ? '移出对读，转为浮窗' : '转为浮窗','panel-bottom',''+id,'ep-text') + button('pin','复制为浮窗','pin',id,'ep-text')) + (w?.kind === 'reading' && citation(id) ? button('open-note','为选中经文记笔记','pen-line',id,'ep-text') : '') + button('close-window','关闭窗口','x',id,'ep-text');
+    if (state.floating.includes(id)) { panel.insertAdjacentHTML('beforeend',button('pin','复制为浮窗','copy',id,'ep-text')); for (const other of state.floating.filter(x=>x!==id)) panel.insertAdjacentHTML('beforeend',button('raise-float','切换到：'+title(M.get(state,other)),'layers',other,'ep-text')); }
     if (w?.kind === 'reference') panel.insertAdjacentHTML('beforeend',button('reference-reading','打开所引经文','book-open',id,'ep-text'));
     if (w?.kind === 'reading') panel.insertAdjacentHTML('beforeend',button('prev','上一章','chevron-left',id,'ep-text') + button('next','下一章','chevron-right',id,'ep-text'));
     panel.hidden = q('.ep-menu-scrim').hidden = false; const a = anchor.getBoundingClientRect(), p = phone.getBoundingClientRect();
     panel.style.left = clamp(a.right-p.left-220,12,phone.clientWidth-232) + 'px'; panel.style.top = clamp(a.bottom-p.top+5,12,phone.clientHeight-panel.offsetHeight-15) + 'px'; icons();
   }
   function updateInert() {
-    const modal = drawerOpen || !!directory || !q('.ep-history-panel').hidden;
+    const capacityOpen = !q('.ep-capacity').hidden;
+    const modal = capacityOpen || drawerOpen || !!directory || !q('.ep-history-panel').hidden;
     q('.ep-main').inert = modal; q('.ep-floating-layer').inert = modal;
-    q('.ep-drawer').inert = !drawerOpen || !!directory || !q('.ep-history-panel').hidden;
+    q('.ep-drawer').inert = capacityOpen || !drawerOpen || !!directory || !q('.ep-history-panel').hidden;
+    q('.ep-history-panel').inert = capacityOpen; q('.ep-directory').inert = capacityOpen;
   }
   function drawerProgress(progress, dragging=false) {
     phone.classList.toggle('ep-drawer-dragging',dragging);
@@ -356,7 +405,7 @@
     if (chapter < 1) { book--; chapter = info(book)?.chapterCount; }
     if (chapter > info(book)?.chapterCount) { book++; chapter = 1; }
     if (!info(book) || !chapter) return;
-    try { await loadBook(book); if (`${M.page(w).book}:${M.page(w).chapter}` !== oldKey) return; change(() => M.navigate(state,id,book,chapter)); } catch (_) { announce('经文暂未载入，请重试'); }
+    try { await loadBook(book); if (!panes.get(id)?.isConnected || `${M.page(M.get(state,id))?.book}:${M.page(M.get(state,id))?.chapter}` !== oldKey) return; change(() => M.navigate(state,id,book,chapter)); } catch (_) { announce('经文暂未载入，请重试'); }
   }
   function citation(id) {
     if (selection?.id === id) return {...selection};
@@ -398,6 +447,14 @@
     }
     const id = b.dataset.id, act = b.dataset.act;
     switch (act) {
+      case 'capacity-cancel': closeCapacity(); break;
+      case 'capacity-minimize':
+      case 'capacity-close': {
+        const pending=pendingCapacity; closeCapacity();
+        if(pending) change(()=>{ if(act==='capacity-minimize') M.minimize(state,id); else M.closeWindow(state,id); pending.callback(); },pending.origin);
+        break;
+      }
+      case 'raise-float': closeMenu(); raiseFloat(id); break;
       case 'drawer': drawer(true); break;
       case 'drawer-close': drawer(false); break;
       case 'root-directory': drawer(false); change(() => { state.atDirectory = true; rootCatalog = {book:null,testament:'旧约'}; }); break;
@@ -423,7 +480,7 @@
       case 'minimize': change(() => M.minimize(state,id)); break;
       case 'move-float': change(() => M.openFloat(state,id,'主窗口变为浮窗')); break;
       case 'pin': change(() => M.pin(state,id)); break;
-      case 'pair': change(() => M.pair(state)); break;
+      case 'pair': change(() => M.pair(state,id)); break;
       case 'unpair': change(() => M.unpair(state,id)); break;
       case 'close-window': change(() => M.closeWindow(state,id)); break;
       case 'close-scene': change(() => M.closeScene(state,id)); break;
@@ -445,27 +502,30 @@
 
   // A floating sheet is NOT modal: only its own boundary consumes wheel/touch input.
   phone.addEventListener('wheel',event => {
-    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list');
+    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card');
     if (!scroller || (event.deltaY < 0 && scroller.scrollTop <= 0) || (event.deltaY > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) event.preventDefault();
   },{passive:false});
   let touchY = null;
   phone.addEventListener('touchstart',event => touchY = event.touches[0]?.clientY,{passive:true});
   phone.addEventListener('touchmove',event => {
     if (touchY == null) return; const y = event.touches[0]?.clientY, delta = touchY - y; touchY = y;
-    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list');
+    const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card');
     if (!scroller || (delta < 0 && scroller.scrollTop <= 0) || (delta > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) { if (event.cancelable) event.preventDefault(); }
   },{passive:false});
   phone.addEventListener('pointerdown',event => {
     if (event.button !== 0) return;
-    const rect = phone.getBoundingClientRect(), handle = event.target.closest('.ep-handle,.ep-divider');
-    gesture = {pointer:event.pointerId,x:event.clientX,y:event.clientY,canOpen:event.clientX-rect.left < rect.width/2,wasOpen:drawerOpen,handle,mode:null,height:state.floating ? M.get(state,state.floating).height : 0,ratio:M.top(state)?.ratio || .5};
+    if (!q('.ep-capacity').hidden) return;
+    const rect = phone.getBoundingClientRect(), handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');
+    const sheet=event.target.closest('.ep-sheet'), w=sheet && M.get(state,sheet.dataset.windowId), geometry=w && floatGeometry(w);
+    if(w && !drawerOpen && !directory) raiseFloat(w.id);
+    gesture = {pointer:event.pointerId,x:event.clientX,y:event.clientY,canOpen:event.clientX-rect.left < rect.width/2,wasOpen:drawerOpen,handle,mode:null,id:w?.id,height:geometry?.height/phone.clientHeight || 0,top:geometry?.top/phone.clientHeight || 0,originalHeight:w?.height,originalTop:w?.floatTop,ratio:M.top(state)?.ratio || .5};
   },true);
   phone.addEventListener('pointermove',event => {
     if (!gesture || gesture.pointer !== event.pointerId) return; const g = gesture, dx = event.clientX-g.x, dy = event.clientY-g.y;
     if (!g.mode) {
       if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)*1.25 && ((g.canOpen && dx > 0) || (g.wasOpen && dx < 0))) {
         g.mode = 'drawer'; clearTimeout(drawerTimer); closeMenu(); if (directory) closeDirectory(); q('.ep-history-panel').hidden = true; renderSaved(); icons(); q('.ep-drawer').hidden = q('.ep-drawer-scrim').hidden = false;
-      } else if (g.handle && Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)*1.25) g.mode = g.handle.classList.contains('ep-divider') ? 'divider' : 'height';
+      } else if (g.handle && Math.abs(dy) > 9 && Math.abs(dy) > Math.abs(dx)*1.25) g.mode = g.handle.classList.contains('ep-divider') ? 'divider' : g.handle.classList.contains('ep-resize') ? 'height' : 'move';
       else if (Math.abs(dy) > 14 && !g.handle) { gesture = null; return; }
       if (g.mode) { phone.setPointerCapture(event.pointerId); ignoreClickUntil = performance.now()+500; }
     }
@@ -473,9 +533,11 @@
     if (g.mode === 'drawer') {
       const width = q('.ep-drawer').offsetWidth, progress = clamp((g.wasOpen ? width : 0) + dx,0,width)/width; g.progress = progress;
       drawerProgress(progress,true);
-    } else if (g.mode === 'height' && state.floating) {
-      const w = M.get(state,state.floating); w.height = clamp(g.height-dy/phone.clientHeight,205/phone.clientHeight,.94); q('.ep-sheet').style.height = w.height*phone.clientHeight+'px';
-      q('.ep-main').style.setProperty('--floating-space',w.height*phone.clientHeight+65+'px');
+    } else if ((g.mode === 'height' || g.mode === 'move') && state.floating.includes(g.id)) {
+      const w=M.get(state,g.id), h=phone.clientHeight, bounds=floatGeometry(w);
+      if(g.mode==='move') w.floatTop=clamp(g.top+dy/h,bounds.topInset/h,(bounds.available-bounds.bottomInset-bounds.height)/h);
+      else { w.floatTop=g.top; w.height=clamp(g.height+dy/h,Math.min(205,bounds.available-bounds.bottomInset-g.top*h)/h,(bounds.available-bounds.bottomInset-g.top*h)/h); }
+      layoutFloats();
     } else if (g.mode === 'divider') {
       const scene = M.top(state), body = q('.ep-scene-body'); if (!scene || !body) return;
       scene.ratio = clamp(g.ratio + dy/(body.clientHeight-27),.25,.75); body.style.gridTemplateRows = `minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`;
@@ -485,24 +547,29 @@
     const g = gesture; gesture = null; if (!g) return;
     if (phone.hasPointerCapture(event.pointerId)) phone.releasePointerCapture(event.pointerId);
     if (g.mode === 'drawer') { drawer(cancelled ? g.wasOpen : g.progress > (g.wasOpen ? .65 : .35)); }
+    if(cancelled && g.id && ['height','move'].includes(g.mode)) { const w=M.get(state,g.id); w.height=g.originalHeight; w.floatTop=g.originalTop; layoutFloats(); }
     if (g.mode) { ignoreClickUntil = performance.now()+350; persist(); }
   }
   phone.addEventListener('pointerup',event => endGesture(event),true);
   phone.addEventListener('pointercancel',event => endGesture(event,true),true);
   phone.addEventListener('keydown',event => {
     if (event.key === 'Escape') {
-      if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else qa('.ep-pane.is-quiet').forEach(n => setQuiet(n,false));
+      if (!q('.ep-capacity').hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else qa('.ep-pane.is-quiet').forEach(n => setQuiet(n,false));
       event.preventDefault(); return;
     }
-    const handle = event.target.closest('.ep-handle,.ep-divider');
+    const handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');
     if (handle && ['ArrowUp','ArrowDown'].includes(event.key)) {
-      event.preventDefault(); const delta = event.key === 'ArrowUp' ? .04 : -.04;
-      if (handle.classList.contains('ep-handle')) { const w = M.get(state,state.floating); w.height = clamp(w.height+delta,205/phone.clientHeight,.94); }
-      else { const scene = M.top(state); scene.ratio = clamp(scene.ratio-delta,.25,.75); }
-      capture(); render(); persist(); return;
+      event.preventDefault(); const delta = event.key === 'ArrowUp' ? -24 : 24;
+      if (!handle.classList.contains('ep-divider')) {
+        const w=M.get(state,handle.dataset.id), g=floatGeometry(w), h=phone.clientHeight; raiseFloat(w.id);
+        if(handle.classList.contains('ep-handle')) w.floatTop=clamp(g.top+delta,g.topInset,g.available-g.bottomInset-g.height)/h;
+        else { w.floatTop=g.top/h; w.height=clamp(g.height+delta,Math.min(205,g.available-g.bottomInset-g.top),g.available-g.bottomInset-g.top)/h; }
+        layoutFloats(); persist();
+      } else { const scene=M.top(state); scene.ratio=clamp(scene.ratio+delta/phone.clientHeight,.25,.75); q('.ep-scene-body').style.gridTemplateRows=`minmax(0,${scene.ratio}fr) 27px minmax(0,${1-scene.ratio}fr)`; persist(); }
+      return;
     }
     if (event.key === 'Tab') {
-      const modal = directory ? q('.ep-directory') : !q('.ep-history-panel').hidden ? q('.ep-history-panel') : drawerOpen ? q('.ep-drawer') : null;
+      const modal = !q('.ep-capacity').hidden ? q('.ep-capacity') : directory ? q('.ep-directory') : !q('.ep-history-panel').hidden ? q('.ep-history-panel') : drawerOpen ? q('.ep-drawer') : null;
       if (!modal) return; const items = [...modal.querySelectorAll('button:not(:disabled),textarea')].filter(b => b.getClientRects().length), first = items[0], last = items.at(-1);
       if (event.shiftKey && document.activeElement === first) { last?.focus(); event.preventDefault(); } else if (!event.shiftKey && document.activeElement === last) { first?.focus(); event.preventDefault(); }
     }
@@ -520,10 +587,16 @@
   if (!state.recoveryOriginal) persist();
   window.addEventListener('openai:set_globals',event => {
     const raw = event.detail?.globals?.widgetState?.privateContent;
-    if (!raw || raw.sender === stamp || raw.version !== 6) return;
+    if (!raw || raw.sender === stamp || raw.version !== 7) return;
     // Initial host hydration is allowed; delayed foreign state must not overwrite active edits.
     if (dirtyNotes.size) return;
     try { const restored = M.restore(raw,books); if (restored) { state = restored; panes.clear(); render(); } } catch (_) { announce('收到的阅读状态无法恢复，保留当前内容'); }
   });
-  new ResizeObserver(() => { const sheet = q('.ep-sheet'), w = M.get(state,state.floating); if (sheet && w) sheet.style.height = clamp(w.height*phone.clientHeight,205,phone.clientHeight-24)+'px'; }).observe(phone);
+  new ResizeObserver(layoutFloats).observe(phone);
+  window.visualViewport?.addEventListener('resize',layoutFloats);
+  window.addEventListener('message',event=>{
+    if(event.source!==parent || event.data?.type!=='emmaus-visible-viewport' || !Number.isFinite(event.data.bottom)) return;
+    hostViewportBottom=Math.max(100,event.data.bottom); layoutFloats();
+  });
+  parent.postMessage({type:'emmaus-viewport-request'},'*');
 })();

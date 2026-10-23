@@ -9,7 +9,7 @@
   const tick = s => s.clock = Math.max(Date.now(), (s.clock || 0) + 1);
   const uid = (s, prefix) => `${prefix}-${tick(s).toString(36)}-${++s.serial}`;
   function fresh() {
-    return {version:6, serial:0, clock:0, windows:[], scenes:[], floating:null, tabs:[], notes:{}, events:[], atDirectory:true};
+    return {version:7, serial:0, clock:0, windows:[], scenes:[], floating:[], tabs:[], notes:{}, events:[], atDirectory:true};
   }
   function snapshot(s, ids) {
     return ids.map(id => get(s, id)).filter(Boolean).map(w => {
@@ -38,7 +38,7 @@
     return w;
   }
   function detach(s, id) {
-    if (s.floating === id) s.floating = null;
+    s.floating = s.floating.filter(x => x !== id);
     s.tabs = s.tabs.filter(t => t.id !== id);
     s.scenes = s.scenes.map(scene => ({...scene, members:scene.members.filter(x => x !== id)})).filter(scene => scene.members.length);
     if (!s.scenes.length) s.atDirectory = true;
@@ -50,48 +50,58 @@
     s.scenes.push(scene); s.atDirectory = false;
     record(s, action, [id], scene);
   }
-  function minimize(s, id = s.floating) {
+  function capacity(s, kind) {
+    if ((kind === 'float' ? s.floating.length >= 2 : s.tabs.length >= 3)) {
+      const error = new Error(kind === 'float' ? '最多同时打开两个浮窗' : '最多保留三个悬浮标签');
+      error.code = kind === 'float' ? 'FLOAT_LIMIT' : 'TAB_LIMIT'; throw error;
+    }
+  }
+  function raise(s, id) {
+    if (!s.floating.includes(id) || s.floating.at(-1) === id) return;
+    s.floating = s.floating.filter(x => x !== id); s.floating.push(id);
+  }
+  function minimize(s, id = s.floating.at(-1)) {
     const w = get(s, id);
-    if (!w) return;
+    if (!w || s.tabs.some(t => t.id === id)) return;
+    capacity(s, 'tab'); // Preflight before detaching: a rejected transition is atomic.
     detach(s, id);
     s.tabs.push({id, lastOpened:w.lastOpened || tick(s)});
     record(s, '收为标签', [id]);
-    while (s.tabs.length > 3) {
-      const oldest = s.tabs.reduce((a, b) => a.lastOpened <= b.lastOpened ? a : b);
-      s.tabs = s.tabs.filter(t => t.id !== oldest.id);
-      record(s, '标签回收', [oldest.id]);
-    }
   }
-  function openFloat(s, id, action = '打开浮窗', sourceWindowId = null) {
+  function openFloat(s, id, action = '打开浮窗') {
     const w = get(s, id);
-    if (!w || s.floating === id) return;
-    // Release a reopened tab before parking the previous float (no spurious LRU eviction).
-    s.tabs = s.tabs.filter(t => t.id !== id);
-    // Placement depends on this action's origin, never the background layout.
-    // A child of the current float keeps its source maximized behind it.
-    // An unrelated entrant (including tab restoration / moving a main pane) parks it.
-    if (s.floating) {
-      if (sourceWindowId === s.floating) promote(s, s.floating, '衍生来源浮窗最大化');
-      else minimize(s);
+    if (!w) return;
+    if (s.floating.includes(id)) { raise(s,id); return; }
+    capacity(s, 'float');
+    // Source identity does not change placement of any existing floating window.
+    if (!Number.isFinite(w.floatTop)) {
+      const previous = get(s,s.floating.at(-1));
+      const previousTop = previous?.floatTop ?? .58;
+      w.floatTop = previous ? clamp(previousTop <= .65 ? previousTop + .08 : previousTop - .08,.02,.72) : Math.max(.02,.98-w.height);
+      if (previous && previousTop <= .65) w.height = Math.min(w.height, Math.max(.25,.98-w.floatTop));
     }
-    detach(s, id); s.floating = id; w.lastOpened = tick(s);
+    detach(s, id); s.floating.push(id); w.lastOpened = tick(s);
     record(s, action, [id]);
   }
-  function openNew(s, kind, options) { const w = create(s, kind, options); openFloat(s, w.id, '打开浮窗', options?.sourceWindowId); return w; }
+  function openNew(s, kind, options) {
+    capacity(s, 'float'); // Includes notes, revisions, IDs and events: no phantom objects.
+    const w = create(s, kind, options); openFloat(s, w.id); return w;
+  }
   // Independent creation belongs to the main stack; derived content uses openNew.
   function openPrimary(s, kind, options) { const w = create(s, kind, options); promote(s, w.id, '目录新建阅读'); return w; }
   function pin(s, id) {
     const source = get(s, id); if (!source) return;
+    capacity(s, 'float');
     const sourceScene = top(s)?.members.includes(id) ? top(s) : null;
     const w = copy(source); w.id = uid(s, 'window'); w.lastOpened = s.clock;
-    s.windows.push(w); openFloat(s, w.id, '固定此处', id);
+    delete w.floatTop; s.windows.push(w); openFloat(s, w.id, '复制为浮窗');
     if (sourceScene && top(s)?.id !== sourceScene.id) resume(s, sourceScene.id);
     return w;
   }
-  function pair(s) {
-    const scene = top(s), id = s.floating;
-    if (!id || !scene || scene.members.length !== 1) return false;
-    s.floating = null; scene.members.push(id); scene.ratio = .5;
+  function pair(s, id = s.floating.at(-1)) {
+    const scene = top(s);
+    if (!s.floating.includes(id) || !scene || scene.members.length !== 1) return false;
+    s.floating = s.floating.filter(x => x !== id); scene.members.push(id); scene.ratio = .5;
     record(s, '组成对读', scene.members, scene); return true;
   }
   function unpair(s, sceneId) {
@@ -99,7 +109,7 @@
     if (!scene || scene.members.length !== 2) return;
     const index = s.scenes.indexOf(scene);
     record(s, '拆分对读', scene.members, scene);
-    s.scenes.splice(index, 1, ...scene.members.map(id => ({id:uid(s, 'scene'), members:[id], ratio:.5})));
+    s.scenes.splice(index, 1, ...[...scene.members].reverse().map(id => ({id:uid(s, 'scene'), members:[id], ratio:.5})));
   }
   function closeWindow(s, id) {
     if (!get(s, id)) return;
@@ -156,9 +166,11 @@
     return book && Number.isInteger(p.chapter) && p.chapter >= 1 && p.chapter <= book.chapterCount;
   }
   function restore(raw, books) {
-    if (!raw || ![3,4,5,6].includes(raw.version) || !Array.isArray(raw.windows)) return null;
-    if (raw.version === 6) {
-      const s = copy(raw);
+    if (!raw || ![3,4,5,6,7].includes(raw.version) || !Array.isArray(raw.windows)) return null;
+    if (raw.version >= 6) {
+      const s = copy(raw); s.version = 7;
+      if (raw.version === 6) s.floating = raw.floating ? [raw.floating] : [];
+      if (!Array.isArray(s.floating) || s.floating.length > 2 || s.tabs?.length > 3) return null;
       if (!Array.isArray(s.scenes) || !Array.isArray(s.tabs) || !Array.isArray(s.events) || !s.notes || typeof s.notes !== 'object') return null;
       if (Object.values(s.notes).some(n => !n || typeof n.text !== 'string' || !Array.isArray(n.revisions) || n.revisions.some(r => !r || typeof r.id !== 'string' || typeof r.text !== 'string'))) return null;
       if (s.events.some(e => !e || typeof e.id !== 'string' || typeof e.action !== 'string' || !Array.isArray(e.windows) || e.windows.some(w => !w || !['reading','note','reference'].includes(w.kind) || (w.kind === 'reading' && (!Array.isArray(w.pages) || !w.pages.length))))) return null;
@@ -170,10 +182,11 @@
       }
       s.serial = Number(s.serial) || 0; s.clock = Number(s.clock) || 0;
       const placed = new Set(); const claim = id => ids.has(id) && !placed.has(id) && placed.add(id);
-      s.floating = claim(s.floating) ? s.floating : null;
+      s.floating = s.floating.filter(claim);
+      s.floating.forEach(id => { const w=get(s,id); if(!Number.isFinite(w.floatTop)) w.floatTop=Math.max(.02,.98-w.height); });
       s.tabs = s.tabs.filter(t => t && claim(t.id));
       s.scenes = s.scenes.filter(x => x && typeof x.id === 'string' && Array.isArray(x.members)).map(x => ({...x,members:x.members.slice(0,2).filter(claim),ratio:clamp(Number(x.ratio)||.5,.25,.75)})).filter(x => x.members.length);
-      while (s.tabs.length > 3) { const oldest = s.tabs.reduce((a,b) => a.lastOpened <= b.lastOpened ? a : b); s.tabs = s.tabs.filter(t => t !== oldest); record(s, '标签回收', [oldest.id]); }
+
       s.atDirectory = !!s.atDirectory || !s.scenes.length;
       return s;
     }
@@ -193,7 +206,7 @@
         const reader = copy(main); reader.id = uid(s,'window'); s.windows.push(reader);
         s.scenes.push({id:uid(s,'scene'),members:[reader.id,w.id],ratio:old.ratio || .5});
       } else if (old.id === raw.active && raw.ui?.peek) minimize(s, w.id);
-      else if (old.id === raw.active && !old.maximized) s.floating = w.id;
+      else if (old.id === raw.active && !old.maximized) s.floating = [w.id];
       else promote(s, w.id, '迁移后台窗口');
     }
     // Preserve legacy orphan drafts too; never silently apply the old four-note cap.
@@ -204,9 +217,9 @@
     return s;
   }
   function assert(s) {
-    const ids = s.windows.map(w => w.id), placed = [...s.scenes.flatMap(x => x.members), ...s.tabs.map(x => x.id), ...(s.floating ? [s.floating] : [])];
-    if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id => !ids.includes(id)) || s.tabs.length > 3 || s.scenes.some(x => x.members.length < 1 || x.members.length > 2)) throw Error('窗口层级不一致');
+    const ids = s.windows.map(w => w.id), placed = [...s.scenes.flatMap(x => x.members), ...s.tabs.map(x => x.id), ...s.floating];
+    if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id => !ids.includes(id)) || s.tabs.length > 3 || s.floating.length > 2 || s.scenes.some(x => x.members.length < 1 || x.members.length > 2)) throw Error('窗口层级不一致');
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);
