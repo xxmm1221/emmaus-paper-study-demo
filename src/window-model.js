@@ -140,6 +140,12 @@
     w.pages.splice(w.pageIndex + 1); w.pages.push({book, chapter, scroll:0, selected:null}); w.pageIndex = w.pages.length - 1;
     record(s, '阅读经文', [id]);
   }
+  function navigateReference(s,id,book,chapter,verse=null) {
+    const w=get(s,id); if(w?.kind!=='reference') return;
+    record(s,'离开释经',[id]);
+    w.citation={book,chapter,verse};w.scroll=0;delete w.commentaryAnchor;delete w.commentaryPositioned;delete w.commentaryExpanded;
+    record(s,'阅读释经',[id]);
+  }
   function travel(s, id, direction) {
     const w = get(s, id); if (w?.kind !== 'reading') return;
     const index = clamp(w.pageIndex + direction, 0, w.pages.length - 1);
@@ -227,5 +233,5 @@
     if (new Set(ids).size !== ids.length || new Set(placed).size !== placed.length || placed.some(id => !ids.includes(id)) || s.tabs.length > 3 || s.floating.length > 2 || s.scenes.some(x => x.members.length < 1 || x.members.length > 2)) throw Error('窗口层级不一致');
     return true;
   }
-  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,swapPair,closeWindow,closeScene,resume,navigate,travel,commitNote,restoreEvent,restore,assert};
+  global.EmmausWindows = {copy,top,get,page,capacity,raise,fresh,create,record,openNew,openPrimary,openFloat,promote,minimize,pin,pair,unpair,swapPair,closeWindow,closeScene,resume,navigate,navigateReference,travel,commitNote,restoreEvent,restore,assert};
 })(globalThis);

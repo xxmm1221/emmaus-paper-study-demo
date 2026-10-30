@@ -59,10 +59,11 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 }
 </style>'''
 page = destination.read_text(encoding='utf-8')
+page = page.replace('sandbox="allow-scripts"', 'sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"', 1)
 # The standalone website stores full local history, not a tiny conversation widget
 # summary. Keep the existing key/receipt protocol; quota failures remain visible.
 page = page.replace('16 * 1024', '8 * 1024 * 1024').replace('16 KiB', '8 MiB')
-page = page.replace("default-src 'none';", "default-src 'none'; connect-src 'self';", 1)
+page = re.sub(r"connect-src[^;]*;", "connect-src 'self' blob: data:;", page, count=1)
 page = page.replace('<html lang="en"', '<html lang="zh-CN"', 1)
 migration_backup = '''<script>
 try {
@@ -93,6 +94,15 @@ bridge = '''<script>
     if(event.source===frame.contentWindow&&request?.type==='emmaus-export-request'&&request.data?.version===7){
       const blob=new Blob([JSON.stringify(request.data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
       link.href=url;link.download='Emmaus-reading-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return;
+    }
+    if(event.source===frame.contentWindow&&request?.type==='emmaus-commentary-request'&&typeof request.id==='string'&&request.id.length<120&&Number.isInteger(request.book)&&request.book>=1&&request.book<=66&&Number.isInteger(request.chapter)&&request.chapter>=1&&request.chapter<=150){
+      const key='commentary:'+request.book+':'+request.chapter;
+      try {
+        let pending=cache.get(key);
+        if(!pending){pending=fetch(new URL('data/commentary/'+request.book+'/'+request.chapter+'.json',location.href),{credentials:'omit'}).then(r=>{if(!r.ok)throw Error('Unavailable');return r.json();});cache.set(key,pending);}
+        frame.contentWindow.postMessage({type:'emmaus-commentary-response',id:request.id,data:await pending},'*');
+      }catch(_){cache.delete(key);frame.contentWindow.postMessage({type:'emmaus-commentary-response',id:request.id,error:'Unavailable'},'*');}
+      return;
     }
     if(event.source!==frame.contentWindow||request?.type!=='emmaus-bible-request'||typeof request.id!=='string'||request.id.length>120||!Number.isInteger(request.book)||request.book<1||request.book>66)return;
     try {

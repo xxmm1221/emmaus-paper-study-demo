@@ -276,3 +276,119 @@
 #emmaus-paper-study .ep-phone.is-wide .ep-paired .ep-scroll { padding-left:24px;padding-right:24px; }
 #emmaus-paper-study .ep-phone.is-wide .ep-main .ep-pane-head { padding-left:16px;padding-right:16px; }
 #emmaus-paper-study .ep-divider:hover span,#emmaus-paper-study .ep-divider:focus-visible span { background:var(--accent); }
+
+
+/* ---- Review pass: reading surfaces, one identity per float ----------------- */
+
+/* One identity line per float: "研读 · 罗马书 8:28". */
+#emmaus-paper-study .ep-window-ref { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-size:12px;letter-spacing:0; }
+#emmaus-paper-study .ep-window-ref::before { content:"·";margin-right:8px;color:var(--muted); }
+#emmaus-paper-study .ep-sheet:not(.is-quiet) .ep-window-ref { display:none; }
+
+#emmaus-paper-study .ep-sheet .ep-pane[data-kind="note"] .ep-scroll,
+#emmaus-paper-study .ep-sheet .ep-pane[data-kind="reference"] .ep-scroll { padding-top:14px; }
+
+/* One visible grip. The bottom resize edge stays as a hit area. */
+#emmaus-paper-study .ep-resize { flex-basis:22px;min-height:22px; }
+#emmaus-paper-study .ep-resize span { opacity:0;transition:opacity 160ms; }
+#emmaus-paper-study .ep-sheet.is-active:not(.is-quiet) .ep-resize span,
+#emmaus-paper-study .ep-resize:focus-visible span { opacity:.55; }
+@media(hover:hover) { #emmaus-paper-study .ep-sheet:hover .ep-resize span { opacity:.55; } }
+
+/* Wide canvas: title, tools and text share one column; floats get their own.
+   --gutter-r is --gutter-l plus the float column (440px) and its gap (24px), so
+   the text always stops 28px short of the float at any canvas width. */
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-pane { --gutter-l:max(28px,calc((100% - 760px)/2));--gutter-r:var(--gutter-l); }
+#emmaus-paper-study .ep-phone.is-wide.has-side-float .ep-main-scene:not(.ep-paired) .ep-pane { --gutter-l:max(28px,calc((100% - 1224px)/2));--gutter-r:calc(464px + var(--gutter-l)); }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-scroll { padding-left:var(--gutter-l);padding-right:var(--gutter-r); }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-pane-head,
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-content-tools { padding-left:calc(var(--gutter-l) - 8px);padding-right:calc(var(--gutter-r) - 8px); }
+
+/* Selection is a per-line tint on the text, not a band under it. */
+#emmaus-paper-study .ep-verse.is-selected .ep-verse-words { background:var(--soft);border-radius:4px;padding:.06em 0;box-decoration-break:clone;-webkit-box-decoration-break:clone; }
+
+/* The reflection prompt is prose, not a quote or a button. */
+#emmaus-paper-study .ep-thought { border-left:0;padding:0;margin:20px 0 8px; }
+#emmaus-paper-study .ep-thought .ep-thought-lead { margin:0 0 4px;color:var(--muted);font:400 12px/1.7 var(--sans); }
+#emmaus-paper-study .ep-thought .ep-thought-question { margin:0;font:500 18px/1.8 var(--serif); }
+
+/* The chapter chooser is as tall as its content, not the whole screen. */
+#emmaus-paper-study .ep-directory { inset:auto 10px max(10px,var(--safe-bottom)) 10px;max-height:calc(100% - 20px - var(--safe-top));box-shadow:0 0 0 200vmax light-dark(#30382f38,#0008),0 8px 45px var(--shadow); }
+#emmaus-paper-study .ep-phone.is-wide .ep-directory { inset:auto;left:50%;top:50%;width:min(560px,calc(100% - 40px));max-height:calc(100% - 80px);transform:translate(-50%,-50%); }
+
+/* Reading-first density: one identity line, one optional tool rail.
+   All shortcuts remain available; horizontal overflow never creates a third row. */
+#emmaus-paper-study .ep-main-scene { padding-top:var(--safe-top); }
+#emmaus-paper-study .ep-scene-head { position:absolute;top:var(--safe-top);left:4px;z-index:3;min-height:0;height:0;padding:0;width:36px; }
+#emmaus-paper-study .ep-scene-head>span { display:none; }
+#emmaus-paper-study .ep-scene-head>.ep-icon { position:absolute;top:0;left:0;width:36px;height:36px; }
+#emmaus-paper-study .ep-pane>.ep-pane-head,
+#emmaus-paper-study .ep-sheet .ep-pane>.ep-pane-head { display:flex;min-height:36px;height:36px;padding:0 14px;gap:6px; }
+#emmaus-paper-study .ep-main .ep-scene-body>.ep-pane:first-child>.ep-pane-head { padding-left:42px; }
+#emmaus-paper-study .ep-pane-title { height:36px;padding:0;font:500 13px/1.3 var(--sans); }
+#emmaus-paper-study .ep-pane-title [data-reading-title] { overflow:hidden;text-overflow:ellipsis; }
+#emmaus-paper-study .ep-title-context { flex-shrink:0;color:var(--muted);font:400 11px/1.3 var(--sans); }
+#emmaus-paper-study .ep-pane.is-quiet .ep-title-context:empty { display:none; }
+#emmaus-paper-study .ep-pane-actions.ep-tool-rail { position:relative;inset:auto;transform:none;display:flex;justify-content:flex-start;flex:0 0 36px;min-height:36px;height:36px;gap:8px;padding:0 8px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior:contain;touch-action:pan-x;white-space:nowrap;background:var(--paper);border:0;border-radius:0;box-shadow:inset 0 -1px var(--hairline);transition:none; }
+#emmaus-paper-study .ep-tool-rail::-webkit-scrollbar { display:none; }
+#emmaus-paper-study .ep-pane.is-quiet>.ep-tool-rail { display:none; }
+#emmaus-paper-study .ep-tool-rail>.ep-content-tools,
+#emmaus-paper-study .ep-tool-rail>.ep-window-shortcuts,
+#emmaus-paper-study .ep-tool-rail>.ep-scene-actions { display:flex;align-items:center;flex:0 0 auto;height:36px;gap:0;visibility:visible; }
+#emmaus-paper-study .ep-tool-rail>.ep-window-shortcuts,
+#emmaus-paper-study .ep-tool-rail>.ep-scene-actions { border-left:1px solid var(--hairline);padding-left:8px; }
+#emmaus-paper-study .ep-tool-rail .ep-icon { display:inline-flex;align-items:center;justify-content:center;min-height:36px;height:36px;width:36px;padding:0;margin:0!important;border:0!important;border-radius:7px;color:var(--muted); }
+#emmaus-paper-study .ep-tool-rail .ep-icon svg { width:17px;height:17px; }
+#emmaus-paper-study .ep-tool-rail .ep-icon:hover { background:var(--soft);color:var(--ink); }
+#emmaus-paper-study .ep-sheet-bar { position:absolute;top:0;left:8px;z-index:2;width:28px;min-height:36px;height:36px;padding:0; }
+#emmaus-paper-study .ep-sheet-bar .ep-handle { min-width:28px;width:28px;height:36px;justify-content:center; }
+#emmaus-paper-study .ep-handle-mark { width:14px;height:3px; }
+#emmaus-paper-study .ep-sheet .ep-pane>.ep-pane-head { padding-left:42px; }
+#emmaus-paper-study .ep-sheet .ep-pane { flex:1;min-height:0; }
+#emmaus-paper-study .ep-resize { flex:0 0 12px;min-height:12px;height:12px; }
+#emmaus-paper-study .ep-resize span { opacity:.35; }
+#emmaus-paper-study .ep-chapter-cover { display:none; }
+#emmaus-paper-study .ep-scroll,
+#emmaus-paper-study .ep-sheet .ep-scroll,
+#emmaus-paper-study .ep-paired .ep-scroll { padding-top:4px;padding-left:16px;padding-right:16px; }
+#emmaus-paper-study .ep-sheet .ep-pane[data-kind="note"] .ep-scroll,
+#emmaus-paper-study .ep-sheet .ep-pane[data-kind="reference"] .ep-scroll { padding-top:4px; }
+#emmaus-paper-study .ep-verse,
+#emmaus-paper-study .ep-sheet .ep-verse,
+#emmaus-paper-study .ep-paired .ep-verse { font:400 18px/1.65 var(--serif);letter-spacing:0;margin-bottom:6px; }
+#emmaus-paper-study .ep-verse-number { min-width:18px;font-size:10px; }
+#emmaus-paper-study .ep-note-preview,
+#emmaus-paper-study .ep-note textarea { font:400 18px/1.65 var(--serif); }
+#emmaus-paper-study .ep-note-heading { display:none; }
+#emmaus-paper-study .ep-note-status { padding-top:6px;font-size:11px; }
+#emmaus-paper-study .ep-reading-footer { margin-top:12px;padding:8px 0; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-pane-head { padding-left:var(--gutter-l);padding-right:var(--gutter-r); }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-tool-rail { padding-left:var(--gutter-l);padding-right:var(--gutter-r); }
+#emmaus-paper-study .ep-phone.is-wide .ep-main-scene:not(.ep-paired) .ep-content-tools { padding:0; }
+#emmaus-paper-study .ep-phone.is-wide .ep-main .ep-scene-body>.ep-pane:first-child>.ep-pane-head { padding-left:max(42px,var(--gutter-l,16px)); }
+/* Real commentary is text-first, with secondary navigation and quotations folded. */
+#emmaus-paper-study .ep-commentary p,
+#emmaus-paper-study .ep-sheet .ep-commentary p { font:400 17px/1.7 var(--serif);margin:0 0 9px;overflow-wrap:anywhere; }
+#emmaus-paper-study .ep-commentary details { border-bottom:1px solid var(--hairline);margin-bottom:8px; }
+#emmaus-paper-study .ep-commentary summary { cursor:pointer;padding:7px 0;font:400 12px/1.6 var(--sans);color:var(--muted); }
+#emmaus-paper-study .ep-commentary summary small { font-size:11px;margin-left:6px; }
+#emmaus-paper-study .ep-commentary nav { display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 10px; }
+#emmaus-paper-study .ep-commentary nav button { min-width:46px;min-height:36px;padding:4px 8px;border-radius:6px;background:var(--soft);font:400 12px/1.4 var(--sans); }
+#emmaus-paper-study .ep-commentary-entry { padding:2px 0 12px; }
+#emmaus-paper-study .ep-commentary-entry>header { display:flex;align-items:center;gap:8px;min-height:32px; }
+#emmaus-paper-study .ep-commentary-entry>header button { color:var(--accent);font:500 13px/1.5 var(--sans);min-height:32px; }
+#emmaus-paper-study .ep-commentary-entry>header span { color:var(--muted);font-size:11px; }
+#emmaus-paper-study .ep-commentary .ep-commentary-quote { display:block;border:0;margin:0 0 5px; }
+#emmaus-paper-study .ep-commentary-quote summary { padding:0;font-size:11px; }
+#emmaus-paper-study .ep-commentary .ep-commentary-quote p { border-left:2px solid var(--line);padding:6px 0 6px 10px;margin-top:6px;color:var(--muted);font-size:16px; }
+#emmaus-paper-study .ep-commentary .ep-commentary-bullet { position:relative;padding-left:12px; }
+#emmaus-paper-study .ep-commentary-bullet::before { content:'·';position:absolute;left:0;color:var(--muted); }
+#emmaus-paper-study .ep-commentary .ep-commentary-notice { font:400 12px/1.7 var(--sans);padding:6px 8px;background:var(--soft);border-radius:6px; }
+#emmaus-paper-study .ep-commentary .ep-commentary-source p { font:400 12px/1.7 var(--sans);color:var(--muted); }
+#emmaus-paper-study .ep-commentary-source a { display:inline-block;padding:6px 0;color:var(--accent);font-size:12px;text-decoration:underline; }
+
+#emmaus-paper-study .ep-title-context a { color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;min-height:32px; }
+#emmaus-paper-study .ep-title-context a:hover { color:var(--accent);text-decoration:underline; }
+
+#emmaus-paper-study .ep-pane-head>.ep-title-menu { width:32px;height:36px;border-radius:7px;color:var(--muted); }
+#emmaus-paper-study .ep-pane.is-quiet>.ep-pane-head>.ep-title-menu { width:0;visibility:hidden;pointer-events:none; }

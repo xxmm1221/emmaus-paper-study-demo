@@ -8,7 +8,8 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const icon = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
   const button = (act,label,name,id,cls='ep-icon') => `<button type="button" class="${cls}" data-act="${act}"${id ? ` data-id="${esc(id)}"` : ''} aria-label="${esc(label)}">${name ? icon(name) : ''}${cls === 'ep-text' ? esc(label) : ''}</button>`;
-  const title = w => w?.kind === 'reading' ? `${info(M.page(w)?.book)?.name || '读经'} ${M.page(w)?.chapter || ''}` : w?.kind === 'note' ? (state.notes[w.contentId]?.text.split('\n').find(t => t.trim())?.replace(/^>\s*/, '').slice(0,18) || '研读笔记') : w?.citation?.book === 45 && w.citation.chapter === 8 && [28,29].includes(w.citation.verse) ? '益处，不止于顺境' : `${info(w?.citation?.book)?.name || '经文'} ${w?.citation?.chapter || ''}${w?.citation?.verse ? ':'+w.citation.verse : ''} · 研读`;
+  const citeLabel = c => `${info(c?.book)?.name || '经文'} ${c?.chapter || ''}${c?.verse ? ':'+c.verse : ''}`;
+  const title = w => w?.kind === 'reading' ? `${info(M.page(w)?.book)?.name || '读经'} ${M.page(w)?.chapter || ''}` : w?.kind === 'note' ? (state.notes[w.contentId]?.text.split('\n').find(t => t.trim())?.replace(/^>\s*/, '').slice(0,18) || '研读笔记') : citeLabel(w?.citation) + ' · 释经';
   const sceneTitle = scene => scene.members.map(id => title(M.get(state,id))).join(' · ');
   let state, drawerOpen = false, directory = null, rootCatalog = {book:null,testament:'旧约'}, directorySerial = 0, requestId = 0;
   let menuTarget = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = 'all', historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
@@ -34,6 +35,61 @@
     }).finally(() => requests.delete(number));
     requests.set(number,promise); return promise;
   }
+  const commentaryCache=new Map(), commentaryRequests=new Map();
+  function loadCommentary(book,chapter) {
+    const key=book+':'+chapter;
+    if(commentaryCache.has(key))return Promise.resolve(commentaryCache.get(key));
+    if(commentaryRequests.has(key))return commentaryRequests.get(key);
+    if(!info(book)||chapter<1||chapter>info(book).chapterCount)return Promise.reject(Error('章节不存在'));
+    const promise=new Promise((resolve,reject)=>{
+      const id=stamp+'-commentary-'+ ++requestId;
+      const receive=e=>{
+        if(e.source!==parent||e.data?.type!=='emmaus-commentary-response'||e.data.id!==id)return;
+        clearTimeout(timer);window.removeEventListener('message',receive);
+        const d=e.data.data;
+        if(d?.number!==book||d.chapter!==chapter||!Array.isArray(d.verses))return reject(Error('释经资料暂未载入'));
+        commentaryCache.set(key,d);resolve(d);
+      };
+      const timer=setTimeout(()=>{window.removeEventListener('message',receive);reject(Error('载入超时'));},20000);
+      window.addEventListener('message',receive);parent.postMessage({type:'emmaus-commentary-request',id,book,chapter},'*');
+    }).finally(()=>commentaryRequests.delete(key));
+    commentaryRequests.set(key,promise);return promise;
+  }
+  function linkedText(text,id) {
+    let html='',offset=0;
+    for(const r of globalThis.EmmausReferences.parse(text,books)) {
+      html+=esc(text.slice(offset,r.start))+`<button class="ep-scripture-link" data-act="note-scripture" data-id="${esc(id)}" data-book="${r.book}" data-chapter="${r.chapter}" data-first="${r.verse||''}" data-last="${r.endVerse||''}" aria-label="打开经文浮窗：${esc(r.label)}">${esc(r.label)}</button>`;
+      offset=r.end;
+    }
+    return html+esc(text.slice(offset));
+  }
+  function commentaryProse(text,id) {
+    return text.split(/\n+/).filter(t=>t.trim()).map(t=>`<p${/^\s*- /.test(t)?' class="ep-commentary-bullet"':''}>${linkedText(t.replace(/^\s*- /,''),id)}</p>`).join('');
+  }
+  function renderCommentary(node,w) {
+    const c=w.citation||{book:45,chapter:8},key=c.book+':'+c.chapter,scroll=node.querySelector('.ep-scroll');
+    if(node.dataset.page===key&&node.dataset.ready==='true')return;
+    if(node.dataset.page===key&&node.dataset.ready==='loading')return;
+    node.dataset.page=key;node.dataset.ready='loading';scroll.className='ep-scroll ep-reference ep-commentary';
+    scroll.innerHTML='<p class="ep-empty">正在载入《圣经综合解读》…</p>';
+    loadCommentary(c.book,c.chapter).then(d=>{
+      const current=M.get(state,w.id),cc=current?.citation||{book:45,chapter:8};
+      if(node.dataset.page!==key||cc.book!==c.book||cc.chapter!==c.chapter)return;
+      const entries=d.verses.filter(v=>v.text?.trim()),self=d.verses.find(v=>v.verse===cc.verse);
+      const target=self?.text?.trim()?self.verse:self?.ref;
+      const notice=cc.verse&&!self?.text?.trim() ? target?`第 ${cc.verse} 节未单列注释，原库索引指向第 ${target} 节。请结合本章上下文阅读。`:`第 ${cc.verse} 节没有独立索引，请从本章目录查阅；不以相邻节注释代替。` : '';
+      const sourceUrl=/^https:\/\/cmcbiblereading\.(com|net)\//.test(d.url)?d.url:'https://cmcbiblereading.com/';
+      scroll.innerHTML=`<details class="ep-commentary-outline" data-detail="outline"><summary>本章目录 <small>${entries.length} 条注释${d.sections.length?' · '+d.sections.length+' 篇专题':''}</small></summary><nav aria-label="本章注释索引">${entries.map(v=>`<button data-act="commentary-jump" data-id="${esc(w.id)}" data-target="${v.verse}">${c.chapter}:${v.verse}</button>`).join('')}</nav></details>`+
+        (notice&&!target?`<p class="ep-commentary-notice">${esc(notice)}</p>`:'')+
+        (d.intro?`<details class="ep-commentary-intro" data-detail="intro"><summary>本章引言</summary>${commentaryProse(d.intro,w.id)}</details>`:'')+
+        d.sections.map((s,i)=>`<details class="ep-commentary-intro" data-detail="section-${i}"><summary>${esc(s.title)}</summary>${commentaryProse(s.text,w.id)}</details>`).join('')+
+        entries.map(v=>`<section class="ep-commentary-entry" data-commentary-verse="${v.verse}">${notice&&target===v.verse?`<p class="ep-commentary-notice">${esc(notice)}</p>`:""}<header><button data-act="commentary-reading" data-id="${esc(w.id)}" data-first="${v.verse}" title="打开本节经文">${esc(info(c.book).abbreviation)} ${c.chapter}:${v.verse}</button><span>注释</span></header>${v.scripture?`<details class="ep-commentary-quote" data-detail="quote-${v.verse}"><summary>展开经文</summary><p>${esc(v.scripture)}</p></details>`:''}${commentaryProse(v.text,w.id)}</section>`).join('')+
+        `<details class="ep-commentary-source" data-detail="source"><summary>资料来源与说明</summary><p>《圣经综合解读》 · 原作者版权所有。来自本机既有文字库，非 AI 生成；图表及音频请在原文查看。原库关联索引不等于本节独立注释。</p><a href="${esc(sourceUrl)}" target="_blank" rel="noopener noreferrer">查看本章原文 ↗</a></details>`;
+      scroll.querySelectorAll('[data-detail]').forEach(el=>el.open=(current.commentaryExpanded||[]).includes(el.dataset.detail));
+      node.dataset.ready='true';node.dataset.target=target||'';
+      paneActions(node,current);requestAnimationFrame(()=>restorePosition(node,M.get(state,w.id)));icons();
+    }).catch(()=>{if(node.dataset.page===key){node.dataset.ready='error';scroll.innerHTML=`<p class="ep-empty">释经资料暂未载入。${button('retry','点击重试','rotate-cw',w.id,'ep-text')}</p>`;icons();}});
+  }
   function capture() {
     panes.forEach((node,id) => {
       if (!node.isConnected || !node.getClientRects().length || node._restoring || node.dataset.ready !== 'true') return;
@@ -42,7 +98,7 @@
         const p = M.page(w); p.scroll = scroll.scrollTop;
         const r = scroll.getBoundingClientRect(), verse = [...scroll.querySelectorAll('.ep-verse')].find(v => v.getBoundingClientRect().bottom > r.top + 8);
         if (verse) p.anchor = {verse:Number(verse.dataset.verse),offset:verse.getBoundingClientRect().top - r.top};
-      } else { if (!scroll.hidden) w.scroll = scroll.scrollTop; if (w.kind === 'note') w.outerScroll = node.querySelector('.ep-scroll').scrollTop; }
+      } else { if (!scroll.hidden) w.scroll = scroll.scrollTop; if (w.kind === 'note') w.outerScroll = node.querySelector('.ep-scroll').scrollTop; if(w.kind==='reference'){w.commentaryExpanded=[...scroll.querySelectorAll('[data-detail][open]')].map(n=>n.dataset.detail);const r=scroll.getBoundingClientRect(),entry=[...scroll.querySelectorAll('[data-commentary-verse]')].find(n=>n.getBoundingClientRect().bottom>r.top+8);if(entry)w.commentaryAnchor={verse:Number(entry.dataset.commentaryVerse),offset:entry.getBoundingClientRect().top-r.top};} }
     });
   }
   function flushNotes() { clearTimeout(noteTimer); for (const id of dirtyNotes) M.commitNote(state,id); dirtyNotes.clear(); }
@@ -215,13 +271,17 @@
     return {height,top:clamp((w.floatTop ?? .98-w.height)*h,topInset,available-bottomInset-height),available,topInset,bottomInset};
   }
   function layoutFloats() {
+    // Wide canvas with a single reading window: floats take a right-hand column
+    // beside the text (see .has-side-float), so the text needs no bottom reserve.
+    const side = wideLayout() && phone.clientWidth >= 1100 && state.floating.length > 0 && M.top(state)?.members.length === 1;
+    phone.classList.toggle('has-side-float', side);
     let reserve = 100;
     qa('.ep-sheet').forEach(sheet=>{
       const w=M.get(state,sheet.dataset.windowId); if(!w) return;
       const g=floatGeometry(w); sheet.style.top=g.top+'px'; sheet.style.height=g.height+'px';
       sheet.style.zIndex=String(state.floating.indexOf(w.id)+1);
       sheet.dataset.front=String(state.floating.at(-1)===w.id);
-      reserve=Math.max(reserve,phone.clientHeight-g.top+30);
+      if(!side) reserve=Math.max(reserve,phone.clientHeight-g.top+30);
     });
     q('.ep-main').style.setProperty('--floating-space',reserve+'px');
   }
@@ -270,7 +330,7 @@
     const actions=floating ? [
       {act:'pair',label:'对读',icon:'rows-2',disabled:!scene || scene.members.length!==1},
       {act:'promote',label:'最大化',icon:'maximize-2'},
-      {act:'minimize',label:'收为悬浮标签',icon:'minus'},
+      {act:'minimize',label:'收为标签',icon:'minus'},
     ] : [...(paired ? [{act:'promote',label:'最大化此窗口',icon:'maximize-2'}] : []),{act:'move-float',label:paired?'移出对读，转为浮窗':'转为浮窗',icon:'panel-bottom'}];
     actions.push({act:'pin',label:'复制为浮窗',icon:'copy'});
     if(floating) for(const other of state.floating.filter(x=>x!==id)) actions.push({act:'raise-float',id:other,label:'切换到：'+title(M.get(state,other)),icon:'layers'});
@@ -286,16 +346,16 @@
         {act:'back',label:'浏览历史后退',icon:'undo-2',disabled:w.pageIndex===0},
         {act:'forward',label:'浏览历史前进',icon:'redo-2',disabled:w.pageIndex===w.pages.length-1},
         {act:'open-note',label:selected?'为选中经文记笔记':'记笔记（请先选中经文）',icon:'pen-line',disabled:!selected},
-        {act:'open-reference',label:selected?'研读选中经文':'研读（请先选中经文）',icon:'book-open',disabled:!selected},
+        {act:'open-reference',label:selected?'释经选中经文':'释经（请先选中经文）',icon:'book-open',disabled:!selected},
       ].map(a=>({id:w.id,...a}));
     }
     if(w.kind==='note') return [{act:'note-edit',label:panes.get(w.id)?.dataset.editing==='true'?'完成编辑':'编辑笔记',icon:panes.get(w.id)?.dataset.editing==='true'?'check':'pen-line',id:w.id}];
-    return [{act:'reference-reading',label:'查看引用经文',icon:'book-open',disabled:!w.citation?.book},{act:'open-note',label:'为引用经文记笔记',icon:'pen-line',disabled:!w.citation?.verse}].map(a=>({id:w.id,...a}));
+    return [{act:'commentary-index',label:'本章注释目录',icon:'list'},{act:'prev',label:'上一章释经',icon:'chevron-left',disabled:w.citation?.book===1&&w.citation?.chapter===1},{act:'next',label:'下一章释经',icon:'chevron-right',disabled:w.citation?.book===66&&w.citation?.chapter===22},{act:'reference-reading',label:'查看引用经文',icon:'book-open',disabled:!w.citation?.book},{act:'open-note',label:'为引用经文记笔记',icon:'pen-line',disabled:!w.citation?.verse}].map(a=>({id:w.id,...a}));
   }
   function actionButtons(actions, compact=true) {
     return actions.map(a=>button(a.act,a.label,a.icon,a.id,compact?'ep-icon':'ep-text').replace('<button ',`<button title="${esc(a.label)}"${a.disabled?' disabled':''} `)).join('');
   }
-  function windowShortcuts(id) { return `<div class="ep-window-shortcuts" role="group" aria-label="窗口操作">${actionButtons(windowActions(id))}${button('pane-menu','窗口操作菜单','ellipsis',id)}</div>`; }
+  function windowShortcuts(id) { return `<div class="ep-window-shortcuts" role="group" aria-label="窗口操作">${actionButtons(windowActions(id))}</div>`; }
   function restorePosition(node,w) {
     node._suppressUntil = performance.now() + 400;
     const scroll = node.querySelector(w.kind === 'note' ? 'textarea' : '.ep-scroll');
@@ -303,15 +363,18 @@
       const p = M.page(w); scroll.scrollTop = p.scroll || 0;
       const verse = node.querySelector(`[data-verse="${p.anchor?.verse || p.selected}"]`);
       if (verse && (p.anchor || (!p.scroll && p.selected))) scroll.scrollTop += verse.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (p.anchor?.offset ?? 12);
-    } else { scroll.scrollTop = w.scroll || 0; if (w.kind === 'note') node.querySelector('.ep-scroll').scrollTop = w.outerScroll || 0; }
+    } else { scroll.scrollTop = w.scroll || 0; if (w.kind === 'note') node.querySelector('.ep-scroll').scrollTop = w.outerScroll || 0; if(w.kind==='reference'&&!w.commentaryPositioned&&node.dataset.ready==='true'){const target=node.querySelector(`[data-commentary-verse="${node.dataset.target}"]`);if(target)scroll.scrollTop+=target.getBoundingClientRect().top-scroll.getBoundingClientRect().top-4;w.commentaryPositioned=true;}else if(w.kind==='reference'&&w.commentaryAnchor){const entry=node.querySelector(`[data-commentary-verse="${w.commentaryAnchor.verse}"]`);if(entry)scroll.scrollTop+=entry.getBoundingClientRect().top-scroll.getBoundingClientRect().top-w.commentaryAnchor.offset;} }
     scroll._resetQuiet?.();
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions=node.querySelector('.ep-pane-actions'), c=w.kind==='reading' && citation(w.id);
-    actions.hidden=false;
-    actions.innerHTML=`<span class="ep-content-context">${w.kind==='reading' ? c?.verse ? c.chapter+':'+c.verse : '经文' : w.kind==='note' ? '笔记' : '研读'}</span>${actionButtons(contentActions(w))}${button('content-menu',w.kind==='reading'?'经文操作菜单':w.kind==='note'?'笔记操作菜单':'研读操作菜单','ellipsis-vertical',w.id)}`;
-    actions.setAttribute('aria-label',w.kind==='reading'?'经文操作':w.kind==='note'?'笔记操作':'研读操作');
+    const actions=node.querySelector('.ep-pane-actions'), scene=M.top(state), label=w.kind==='reading'?'经文':w.kind==='note'?'笔记':'释经';
+    const combo=scene?.members.length===2&&scene.members[0]===w.id ? `<div class="ep-scene-actions" role="group" aria-label="对读组合操作">${button('unpair',unpairLabel(),'rows-2',scene.id)}${button('close-scene','关闭整个组合','x',scene.id)}${button('scene-menu','组合操作菜单','ellipsis',scene.id)}</div>` : '';
+    const left=actions.scrollLeft;
+    actions.innerHTML=`<div class="ep-content-tools" role="group" aria-label="${label}操作">${actionButtons(contentActions(w))}${button('content-menu',label+'操作菜单','ellipsis-vertical',w.id)}</div>${windowShortcuts(w.id)}${combo}`;
+    actions.setAttribute('aria-label','阅读与窗口快捷操作，可横向滑动');actions.scrollLeft=left;
+    const context=node.querySelector('.ep-title-context');
+    if(context){const d=w.kind==='reference'&&commentaryCache.get(w.citation?.book+':'+w.citation?.chapter);context.textContent=w.kind==='reading'&&M.page(w).selected?'· '+M.page(w).selected+'节':w.kind==='reference'?'综合解读':'';if(d&&/^https:\/\/cmcbiblereading\.(com|net)\//.test(d.url))context.innerHTML=`<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" title="文字版 · 查看含图表的本章原文">综合解读 ↗</a>`;}
     syncChrome();
   }
   function renderNote(node,w) {
@@ -333,10 +396,10 @@
     const id=b.dataset.id, w=M.get(state,id), origin=b.getBoundingClientRect(), token=++referenceRequest;
     const book=Number(b.dataset.book), chapter=Number(b.dataset.chapter), verse=Number(b.dataset.first)||null, endVerse=Number(b.dataset.last)||verse;
     const originalText = w?.kind === 'note' && state.notes[w.contentId].text;
-    if (w?.kind !== 'note' || !info(book) || chapter<1 || chapter>info(book).chapterCount) return;
+    if (!['note','reference'].includes(w?.kind) || !info(book) || chapter<1 || chapter>info(book).chapterCount) return;
     try {
       const data = await loadBook(book), verses=data.chapters[chapter-1];
-      if(token!==referenceRequest || !b.isConnected || state.notes[w.contentId].text!==originalText) return;
+      if(token!==referenceRequest || !b.isConnected || (w.kind==='note'&&state.notes[w.contentId].text!==originalText)) return;
       if(verse && (!verses.some(v=>v[0]===verse)||!verses.some(v=>v[0]===endVerse))) { announce('引用的节号不存在，请检查笔记'); return; }
       const sourceScene=M.top(state)?.members.includes(id) ? M.top(state) : null;
       change(()=>{ M.openNew(state,'reading',{book,chapter,verse,sourceWindowId:id,citation:{book,chapter,verse,sourceNoteId:id}}); if(sourceScene && M.top(state)?.id!==sourceScene.id) M.resume(state,sourceScene.id); },origin);
@@ -346,12 +409,13 @@
     let node = panes.get(w.id);
     if (!node) {
       node = document.createElement('section'); node.className = 'ep-pane is-quiet'; node.tabIndex=0; node.dataset.windowId = w.id; node.setAttribute('aria-label',title(w));
-      node.innerHTML = '<header class="ep-pane-head"></header><div class="ep-pane-actions ep-content-tools" role="group"></div><div class="ep-scroll"></div>';
+      node.innerHTML = '<header class="ep-pane-head"></header><div class="ep-pane-actions ep-tool-rail" role="toolbar"></div><div class="ep-scroll"></div>';
       panes.set(w.id,node); watchScroll(node,node.querySelector('.ep-scroll'));
     }
     const header = node.querySelector('.ep-pane-head'), float = state.floating.includes(w.id);
-    node.setAttribute('aria-label',title(w));
-    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind === 'reading' ? 'reading-directory' : 'activate'}" data-id="${esc(w.id)}" aria-label="${w.kind === 'reading' ? '选择书卷和章节' : '显示窗口工具'}"><span data-reading-title>${esc(title(w))}</span>${w.kind === 'reading' ? icon('chevron-down') : ''}</button>` + (!float ? windowShortcuts(w.id) : '');
+    node.setAttribute('aria-label',title(w)); node.dataset.kind = w.kind;
+    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind==='reading'||w.kind==='reference'?'reading-directory':'activate'}" data-id="${esc(w.id)}" aria-label="${w.kind==='note'?'显示窗口工具':'选择书卷和章节'}"><span data-reading-title>${esc(title(w))}</span>${w.kind==='note'?'':icon('chevron-down')}</button><span class="ep-title-context"></span>${button('pane-menu','窗口操作菜单','ellipsis',w.id,'ep-icon ep-title-menu')}`;
+
     const scroll = node.querySelector('.ep-scroll');
     if (w.kind === 'reading') {
       const p = M.page(w), key = `${p.book}:${p.chapter}`;
@@ -377,13 +441,10 @@
           clearTimeout(noteTimer); noteTimer = setTimeout(() => { flushNotes(); persist(); },650); scheduleSave();
         });
         area.addEventListener('blur',() => { flushNotes(); persist(); });
-      } else {
-        const c=w.citation, supported=c?.book===45 && c.chapter===8 && [28,29].includes(c.verse);
-        scroll.className = 'ep-scroll ep-reference';
-        if (!supported) scroll.innerHTML = `<span class="ep-kicker">研读 · ${esc(info(c?.book)?.name)} ${c?.chapter || ''}:${c?.verse || ''}</span><h2>经文研读</h2><p>${esc(c?.words || '')}</p><p class="ep-empty">本节暂无已接入的研读资料。</p><small class="ep-source-credit">当前为交互原型，不生成或套用其他经文的注释。</small>`;
-        else scroll.innerHTML = `<span class="ep-kicker">研读札记 · 罗马书 8:${c.verse}</span><h2>益处，不止于顺境。</h2><p class="ep-lead">“万事互相效力”，不是说每一件事本身都是好的。</p><p>把目光放到下一节：“效法他儿子的模样”。保罗所说的益处，也关乎我们在经历中，逐渐成为怎样的人。</p><div class="ep-thought"><span class="ep-kicker">带着这个问题，再读一遍</span><p>我盼望的，是处境改变，<br>还是生命也被更新？</p></div><small class="ep-source-credit">原创演示札记；仅适用于罗马书 8:28–29，不冒充其他经节的注释。</small>`;
+
       }
     }
+    if (w.kind === 'reference') renderCommentary(node,w);
     if (w.kind === 'note') renderNote(node,w);
     paneActions(node,w); return node;
   }
@@ -394,7 +455,7 @@
     if (!scene) renderDirectory(main,rootCatalog,true);
     else {
       const wrap = document.createElement('div'); wrap.className = 'ep-main-scene' + (scene.members.length === 2 ? ' ep-paired' : ''); wrap.dataset.sceneId = scene.id;
-      wrap.innerHTML = `<header class="ep-scene-head">${button('drawer','打开后台','panel-left')}<span>${scene.members.length === 2 ? '上下对读' : 'EMMAUS'}</span>${scene.members.length === 2 ? `<div class="ep-scene-actions" role="group" aria-label="对读组合操作">${button('unpair',unpairLabel(),'rows-2',scene.id)}${button('close-scene','关闭整个组合','x',scene.id)}${button('scene-menu','组合操作菜单','ellipsis',scene.id)}</div>` : ''}</header><div class="ep-scene-body"></div>`;
+      wrap.innerHTML = `<header class="ep-scene-head">${button('drawer','打开侧栏','panel-left')}<span></span></header><div class="ep-scene-body"></div>`;
       const body = wrap.querySelector('.ep-scene-body');
       scene.members.forEach((id,index) => { if (index) { const div = document.createElement('button'); div.type = 'button'; div.className = 'ep-divider'; div.dataset.scene = scene.id; div.dataset.act='swap-pair'; div.dataset.id=scene.id; div.innerHTML = '<span></span>'; body.append(div); } body.append(ensurePane(M.get(state,id))); });
       main.append(wrap);
@@ -406,14 +467,13 @@
       if (!sheet) { sheet = document.createElement('article'); sheet.className = 'ep-sheet'; sheet.dataset.windowId = id; sheet.dataset.presentation = 'floating'; slot.append(sheet); }
       sheet.setAttribute('aria-label','浮窗：'+title(w));
       let bar = sheet.querySelector('.ep-sheet-bar'); if (!bar) { bar = document.createElement('header'); bar.className = 'ep-sheet-bar'; sheet.prepend(bar); }
-      bar.innerHTML = `<button class="ep-handle" data-id="${esc(id)}" aria-label="上下移动浮窗" title="拖动上下移动，点按显示工具" type="button"><span class="ep-handle-mark" aria-hidden="true"></span><span class="ep-window-kind">${w.kind === 'reading' ? '经文' : w.kind === 'note' ? '笔记' : '研读'}</span></button>` + windowShortcuts(id);
-      bar.insertAdjacentHTML('beforeend','<span class="ep-sheet-rule" aria-hidden="true"></span>');
+      bar.innerHTML = `<button class="ep-handle" data-id="${esc(id)}" aria-label="上下移动浮窗" title="拖动上下移动，点按显示工具" type="button"><span class="ep-handle-mark" aria-hidden="true"></span></button>`;
       sheet.querySelector('.ep-resize')?.remove();
       sheet.append(ensurePane(w));
       sheet.insertAdjacentHTML('beforeend',`<button class="ep-resize" data-id="${esc(id)}" aria-label="调整浮窗高度" title="拖动下边缘调整高度" type="button"><span></span></button>`);
     }
     layoutPair(); layoutFloats();
-    q('.ep-tabs').innerHTML = state.tabs.map(t => { const w = M.get(state,t.id); return `<div class="ep-tab-item"><button class="ep-tab" data-tab="${esc(t.id)}" aria-label="以浮窗打开：${esc(title(w))}">${icon(w.kind === 'note' ? 'notebook-pen' : 'book-open')}<span>${esc(title(w))}</span></button>${button('close-window','关闭标签：'+title(w),'x',t.id,'ep-icon ep-tab-close')}</div>`; }).join('');
+    q('.ep-tabs').innerHTML = state.tabs.map(t => { const w = M.get(state,t.id); return `<div class="ep-tab-item"><button class="ep-tab" data-tab="${esc(t.id)}" aria-label="以浮窗打开：${esc(title(w))}">${icon(w.kind === 'note' ? 'notebook-pen' : w.kind === 'reference' ? 'library' : 'book-open')}<span>${esc(title(w))}</span></button>${button('close-window','关闭标签：'+title(w),'x',t.id,'ep-icon ep-tab-close')}</div>`; }).join('');
     renderSaved(); icons(); updateInert(); syncChrome();
     requestAnimationFrame(() => panes.forEach((node,id) => { if (node.isConnected && node.dataset.ready === 'true') restorePosition(node,M.get(state,id)); }));
   }
@@ -424,7 +484,7 @@
   function closeMenu() { menuTarget = null; q('.ep-popover').hidden = q('.ep-menu-scrim').hidden = true; }
   function menu(id,anchor,isScene=false,isContent=false) {
     closeMenu(); menuTarget = id; const panel=q('.ep-popover'), w=M.get(state,id);
-    const label=isScene?'对读组合操作':isContent ? w?.kind==='reading'?'经文操作':w?.kind==='note'?'笔记操作':'研读操作' : '窗口操作';
+    const label=isScene?'对读组合操作':isContent ? w?.kind==='reading'?'经文操作':w?.kind==='note'?'笔记操作':'释经操作' : '窗口操作';
     const actions=isScene ? [{act:'unpair',label:unpairLabel(),icon:'rows-2',id},{act:'close-scene',label:'关闭整个组合',icon:'x',id}] : isContent ? contentActions(w) : windowActions(id);
     panel.setAttribute('aria-label',label); panel.dataset.scope=isScene?'scene':isContent?'content':'window';
     panel.innerHTML=`<span class="ep-menu-label">${label}</span>`+actionButtons(actions,false);
@@ -460,14 +520,14 @@
     if (!open) drawerTimer = setTimeout(() => { if (!drawerOpen && gesture?.mode !== 'drawer') el.hidden = q('.ep-drawer-scrim').hidden = true; },reduceMotion()?0:380);
     updateInert(); icons(); if (open) el.querySelector('button').focus({preventScroll:true}); else if (lastModalFocus?.isConnected && !directory) lastModalFocus.focus({preventScroll:true});
   }
-  function openDirectory(id) {
-    drawer(false); closeMenu(); directory = {id:id || null,book:null,testament:'旧约',serial:++directorySerial,busy:false};
+  function openDirectory(id,kind) {
+    drawer(false); closeMenu(); directory = {kind:kind||M.get(state,id)?.kind||'reading',id:id || null,book:null,testament:'旧约',serial:++directorySerial,busy:false};
     q('.ep-directory').hidden = false; renderDirectory(q('.ep-directory'),directory,false); updateInert(); q('.ep-directory button').focus({preventScroll:true});
   }
   function closeDirectory() { directory = null; directorySerial++; q('.ep-directory').hidden = true; updateInert(); }
   function renderDirectory(container,catalog,isRoot) {
     const book = info(catalog.book), kind = isRoot ? 'root' : 'modal';
-    container.innerHTML = `<div class="${isRoot ? 'ep-root-directory' : 'ep-directory-inner'}" data-catalog="${kind}" style="display:flex;flex-direction:column;min-height:0;height:100%"><header class="ep-directory-head">${book ? button('directory-back','返回书卷目录','arrow-left') : isRoot ? button('drawer','打开后台','panel-left') : ''}<h2>${book ? esc(book.name) + ' · 选章' : isRoot ? '书卷目录' : catalog.id ? '选择书卷' : '新建读经'}</h2>${isRoot ? button('history','历史记录','history') : button('directory-close','取消选择','x')}</header>${!book && isRoot ? '<p class="ep-directory-intro">翻开话语，继续今天的旅程。</p>' : ''}<div class="ep-directory-tabs"${book ? ' hidden' : ''}><button data-testament="旧约" aria-pressed="${catalog.testament === '旧约'}">旧约</button><button data-testament="新约" aria-pressed="${catalog.testament === '新约'}">新约</button></div><div class="ep-directory-content">${book ? `<div class="ep-chapter-grid">${Array.from({length:book.chapterCount},(_,i) => `<button data-pick-chapter="${i+1}" aria-label="${esc(book.name)} 第 ${i+1} 章"${catalog.busy ? ' disabled' : ''}>${i+1}</button>`).join('')}</div>` : `<div class="ep-book-grid">${books.filter(b => b.testament === catalog.testament).map(b => `<button data-pick-book="${b.number}">${esc(b.name)}<small>${b.chapterCount} 章</small></button>`).join('')}</div>`}</div><div class="ep-directory-status" role="status">${catalog.busy ? '正在载入经文…' : book ? '选择章节后打开阅读。' : '先选书卷，再选章节。'}</div></div>`; icons();
+    container.innerHTML = `<div class="${isRoot ? 'ep-root-directory' : 'ep-directory-inner'}" data-catalog="${kind}" style="display:flex;flex-direction:column;min-height:0;height:100%"><header class="ep-directory-head">${book ? button('directory-back','返回书卷目录','arrow-left') : isRoot ? button('drawer','打开侧栏','panel-left') : ''}<h2>${book ? esc(book.name) : isRoot ? '书卷目录' : catalog.id ? '选择书卷' : catalog.kind==='reference'?'圣经综合解读':'新建读经'}</h2>${isRoot ? button('history','历史记录','history') : button('directory-close','取消选择','x')}</header>${!book && isRoot ? '<p class="ep-directory-intro">翻开话语，继续今天的旅程。</p>' : ''}<div class="ep-directory-tabs"${book ? ' hidden' : ''}><button data-testament="旧约" aria-pressed="${catalog.testament === '旧约'}">旧约</button><button data-testament="新约" aria-pressed="${catalog.testament === '新约'}">新约</button></div><div class="ep-directory-content">${book ? `<div class="ep-chapter-grid">${Array.from({length:book.chapterCount},(_,i) => `<button data-pick-chapter="${i+1}" aria-label="${esc(book.name)} 第 ${i+1} 章"${catalog.busy ? ' disabled' : ''}>${i+1}</button>`).join('')}</div>` : `<div class="ep-book-grid">${books.filter(b => b.testament === catalog.testament).map(b => `<button data-pick-book="${b.number}">${esc(b.name)}<small>${b.chapterCount} 章</small></button>`).join('')}</div>`}</div><div class="ep-directory-status" role="status">${catalog.busy ? '正在载入经文…' : book ? '选择章节后打开阅读。' : '先选书卷，再选章节。'}</div></div>`; icons();
   }
   async function chooseChapter(number,catalog,isRoot) {
     const origin = motionOrigin;
@@ -478,16 +538,16 @@
       if (catalog.request !== token || catalog.book !== book.number || (isRoot && (M.top(state) || rootCatalog !== catalog)) || (!isRoot && (directory !== catalog || directory.serial !== serial))) return;
       if (!data.chapters[number-1]?.length) throw Error('经文未载入');
       if (!isRoot) closeDirectory(); catalog.busy = false;
-      change(() => { if (catalog.id && M.get(state,catalog.id)) M.navigate(state,catalog.id,book.number,number); else M.openPrimary(state,'reading',{book:book.number,chapter:number}); },origin);
+      change(() => { if (catalog.id && M.get(state,catalog.id)) {if(catalog.kind==='reference')M.navigateReference(state,catalog.id,book.number,number);else M.navigate(state,catalog.id,book.number,number);} else M.openPrimary(state,catalog.kind==='reference'?'reference':'reading',{book:book.number,chapter:number,citation:catalog.kind==='reference'?{book:book.number,chapter:number}:null}); },origin);
     } catch (_) { if ((isRoot && rootCatalog === catalog) || directory === catalog) { catalog.busy = false; renderDirectory(container,catalog,isRoot); container.querySelector('.ep-directory-status').textContent = '经文暂未载入，请点击章节重试。'; } }
   }
   async function navigate(id,delta) {
-    const w = M.get(state,id); if (w?.kind !== 'reading') return; const p = M.page(w), oldKey = `${p.book}:${p.chapter}`;
+    const w = M.get(state,id); if (!['reading','reference'].includes(w?.kind)) return; const p = w.kind==='reading'?M.page(w):w.citation, oldKey = `${p.book}:${p.chapter}`;
     let book = p.book, chapter = p.chapter + delta;
     if (chapter < 1) { book--; chapter = info(book)?.chapterCount; }
     if (chapter > info(book)?.chapterCount) { book++; chapter = 1; }
     if (!info(book) || !chapter) return;
-    try { await loadBook(book); if (!panes.get(id)?.isConnected || `${M.page(M.get(state,id))?.book}:${M.page(M.get(state,id))?.chapter}` !== oldKey) return; change(() => M.navigate(state,id,book,chapter)); } catch (_) { announce('经文暂未载入，请重试'); }
+    try { await (w.kind==='reading'?loadBook(book):loadCommentary(book,chapter));const current=M.get(state,id),cp=current?.kind==='reading'?M.page(current):current?.citation; if (!panes.get(id)?.isConnected || `${cp?.book}:${cp?.chapter}` !== oldKey) return; change(() => w.kind==='reading'?M.navigate(state,id,book,chapter):M.navigateReference(state,id,book,chapter)); } catch (_) { announce('经文暂未载入，请重试'); }
   }
   function citation(id) {
     if (selection?.id === id) return {...selection};
@@ -510,6 +570,7 @@
   }
   function exportBackup() { capture(); flushNotes(); persist(); parent.postMessage({type:'emmaus-export-request',data:M.copy(state)},'*'); announce('正在导出本地备份'); }
 
+  phone.addEventListener('toggle',event=>{if(event.target.matches('[data-detail]'))scheduleSave();},true);
   phone.addEventListener('click',event => {
     if (performance.now() < ignoreClickUntil) { event.preventDefault(); return; }
     const surface=event.target.closest('.ep-pane,.ep-sheet'), tappedId=surface?.dataset.windowId;
@@ -546,6 +607,7 @@
       case 'drawer-close': drawer(false); break;
       case 'root-directory': drawer(false); change(() => { state.atDirectory = true; rootCatalog = {book:null,testament:'旧约'}; }); break;
       case 'new-reading': openDirectory(); break;
+      case 'new-commentary': openDirectory(null,'reference'); break;
       case 'reading-directory': openDirectory(id); break;
       case 'directory-close': closeDirectory(); break;
       case 'directory-back': if (catalog) { catalog.book = null; catalog.busy = false; catalog.request = (catalog.request || 0)+1; renderDirectory(isRoot ? q('.ep-main') : q('.ep-directory'),catalog,isRoot); } break;
@@ -556,13 +618,16 @@
         else { flushNotes(); persist(); } break;
       }
       case 'note-scripture': openNoteScripture(b); break;
+      case 'commentary-reading': {const c=M.get(state,id)?.citation;if(c)change(()=>M.openNew(state,'reading',{book:c.book,chapter:c.chapter,verse:Number(b.dataset.first),sourceWindowId:id}));break;}
+      case 'commentary-index': {const node=panes.get(id),outline=node.querySelector('.ep-commentary-outline');if(outline){outline.open=true;node.querySelector('.ep-scroll').scrollTop=0;}break;}
+      case 'commentary-jump': {const node=panes.get(id),scroller=node.querySelector('.ep-scroll'),target=node.querySelector(`[data-commentary-verse="${b.dataset.target}"]`);node.querySelector('.ep-commentary-outline').open=false;if(target)scroller.scrollTop+=target.getBoundingClientRect().top-scroller.getBoundingClientRect().top-4;persist();break;}
       case 'open-note': drawer(false); newNote(id); break;
       case 'open-reference': {
         const c = citation(id);
         if (!c?.verse) { announce('请先选中一节经文'); break; }
         change(() => M.openNew(state,'reference',{citation:c,sourceWindowId:id})); break;
       }
-      case 'reference-reading': { const c=M.get(state,id)?.citation; if(c?.book) change(()=>M.openNew(state,'reading',{book:c.book,chapter:c.chapter,verse:c.book===45 && c.chapter===8 && [28,29].includes(c.verse) ? 29 : c.verse,sourceWindowId:id})); break; }
+      case 'reference-reading': { const c=M.get(state,id)?.citation; if(c?.book) change(()=>M.openNew(state,'reading',{book:c.book,chapter:c.chapter,verse:c.verse,sourceWindowId:id})); break; }
       case 'promote': change(() => M.promote(state,id)); break;
       case 'minimize': change(() => M.minimize(state,id)); break;
       case 'move-float': change(() => M.openFloat(state,id,'主窗口变为浮窗')); break;
@@ -596,6 +661,7 @@
 
   // A floating sheet is NOT modal: only its own boundary consumes wheel/touch input.
   phone.addEventListener('wheel',event => {
+    if(event.target.closest('.ep-tool-rail'))return;
     const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card,.ep-popover');
     if (!scroller || (event.deltaY < 0 && scroller.scrollTop <= 0) || (event.deltaY > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) event.preventDefault();
   },{passive:false});
@@ -603,12 +669,14 @@
   phone.addEventListener('touchstart',event => touchY = event.touches[0]?.clientY,{passive:true});
   phone.addEventListener('touchmove',event => {
     if (touchY == null) return; const y = event.touches[0]?.clientY, delta = touchY - y; touchY = y;
+    if(event.target.closest('.ep-tool-rail'))return;
     const scroller = event.target.closest('textarea,.ep-scroll,.ep-directory-content,.ep-saved-list,.ep-history-list,.ep-capacity-card,.ep-popover');
     if (!scroller || (delta < 0 && scroller.scrollTop <= 0) || (delta > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1)) { if (event.cancelable) event.preventDefault(); }
   },{passive:false});
   phone.addEventListener('pointerdown',event => {
     if (event.button !== 0) return;
     if (!q('.ep-capacity').hidden) return;
+    if(event.target.closest('.ep-tool-rail')) {gesture=null;return;}
     const rect = phone.getBoundingClientRect(), handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');
     const sheet=event.target.closest('.ep-sheet'), w=sheet && M.get(state,sheet.dataset.windowId), geometry=w && floatGeometry(w);
     if(w && !drawerOpen && !directory) raiseFloat(w.id);
