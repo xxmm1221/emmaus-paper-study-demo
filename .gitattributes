@@ -1,0 +1,3 @@
+# Public assets are byte-audited against GitHub Pages, including on Windows.
+*.json text eol=lf
+index.html text eol=lf
