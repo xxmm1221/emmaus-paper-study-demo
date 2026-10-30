@@ -1845,12 +1845,12 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       &lt;button type=&quot;button&quot; class=&quot;ep-drawer-scrim&quot; data-act=&quot;drawer-close&quot; aria-label=&quot;收起后台&quot; hidden&gt;&lt;/button&gt;
       &lt;aside class=&quot;ep-drawer&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot; aria-label=&quot;后台阅读场景&quot; hidden&gt;
         &lt;header&gt;&lt;span class=&quot;ep-wordmark&quot;&gt;Emmaus&lt;/span&gt;&lt;button class=&quot;ep-icon&quot; data-act=&quot;drawer-close&quot; aria-label=&quot;收起后台&quot;&gt;&lt;i data-lucide=&quot;x&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/header&gt;
-        &lt;p class=&quot;ep-drawer-caption&quot;&gt;在路上，也在话语里。&lt;/p&gt;
-        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;root-directory&quot;&gt;&lt;i data-lucide=&quot;library&quot;&gt;&lt;/i&gt;&lt;span&gt;书卷目录&lt;small&gt;回到话语的起点&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;new-commentary&quot;&gt;&lt;i data-lucide=&quot;book-open-text&quot;&gt;&lt;/i&gt;&lt;span&gt;释经资料&lt;small&gt;圣经综合解读 · 66 卷全书&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;history&quot;&gt;&lt;i data-lucide=&quot;history&quot;&gt;&lt;/i&gt;&lt;span&gt;历史记录&lt;small&gt;找回阅读与思考的痕迹&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;
-        &lt;div class=&quot;ep-saved-heading&quot;&gt;&lt;span&gt;阅读场景 &lt;small data-saved-count&gt;0&lt;/small&gt;&lt;/span&gt;&lt;button class=&quot;ep-text&quot; data-act=&quot;new-reading&quot;&gt;新建&lt;i data-lucide=&quot;plus&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
+        &lt;div class=&quot;ep-saved-heading&quot;&gt;&lt;span&gt;已打开 &lt;small data-saved-count&gt;0&lt;/small&gt;&lt;/span&gt;&lt;button class=&quot;ep-text&quot; data-act=&quot;new-reading&quot; aria-label=&quot;新建读经窗口&quot;&gt;&lt;i data-lucide=&quot;plus&quot;&gt;&lt;/i&gt;新建&lt;/button&gt;&lt;/div&gt;
         &lt;div class=&quot;ep-saved-list&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;ep-library-heading&quot;&gt;阅读资料&lt;/div&gt;
+        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;root-directory&quot;&gt;&lt;i data-lucide=&quot;library&quot;&gt;&lt;/i&gt;&lt;span&gt;书卷目录&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;new-commentary&quot;&gt;&lt;i data-lucide=&quot;book-open-text&quot;&gt;&lt;/i&gt;&lt;span&gt;释经资料&lt;/span&gt;&lt;/button&gt;
+        &lt;button class=&quot;ep-nav-row&quot; data-act=&quot;history&quot;&gt;&lt;i data-lucide=&quot;history&quot;&gt;&lt;/i&gt;&lt;span&gt;历史记录&lt;/span&gt;&lt;/button&gt;
         &lt;footer&gt;&lt;button class=&quot;ep-text&quot; data-act=&quot;export&quot;&gt;&lt;i data-lucide=&quot;download&quot;&gt;&lt;/i&gt;导出本地备份&lt;/button&gt;&lt;small&gt;笔记与历史仅保存在此浏览器&lt;/small&gt;&lt;/footer&gt;
       &lt;/aside&gt;
       &lt;button class=&quot;ep-menu-scrim&quot; data-act=&quot;menu-close&quot; aria-label=&quot;关闭窗口菜单&quot; hidden&gt;&lt;/button&gt;
@@ -2261,6 +2261,67 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
 
 #emmaus-paper-study .ep-pane-head&gt;.ep-title-menu { width:32px;height:36px;border-radius:7px;color:var(--muted); }
 #emmaus-paper-study .ep-pane.is-quiet&gt;.ep-pane-head&gt;.ep-title-menu { width:0;visibility:hidden;pointer-events:none; }
+
+/* Intent-first chrome: window controls stay with the title; reading tools never
+   compete for a horizontal scrolling rail. Only essential float controls persist. */
+#emmaus-paper-study .ep-pane&gt;.ep-pane-head,
+#emmaus-paper-study .ep-sheet .ep-pane&gt;.ep-pane-head { min-height:40px;height:40px;padding-right:8px;gap:4px; }
+#emmaus-paper-study .ep-pane-title { height:40px;gap:5px; }
+#emmaus-paper-study .ep-pane.is-quiet .ep-pane-title svg { visibility:visible;opacity:.65; }
+#emmaus-paper-study .ep-pane-head .ep-window-shortcuts { display:flex;align-items:center;gap:0;width:auto;overflow:visible;visibility:visible;pointer-events:auto; }
+#emmaus-paper-study .ep-pane.is-quiet&gt;.ep-pane-head .ep-window-shortcuts { width:auto;overflow:visible;visibility:visible;pointer-events:auto; }
+#emmaus-paper-study .ep-pane-head .ep-window-shortcuts .ep-icon { width:36px;min-width:36px;height:40px;min-height:40px;margin:0;border-radius:7px;color:var(--muted); }
+#emmaus-paper-study .ep-pane-head .ep-window-shortcuts [data-persistent=&quot;true&quot;] { color:var(--ink); }
+#emmaus-paper-study .ep-pane.is-quiet&gt;.ep-pane-head .ep-window-shortcuts button:not([data-persistent=&quot;true&quot;]) { display:none; }
+#emmaus-paper-study .ep-kind-label { flex-shrink:0;font-size:10px;color:var(--muted);font-weight:400;padding-right:3px; }
+#emmaus-paper-study .ep-pane-actions.ep-tool-rail { flex:0 0 auto;min-height:40px;height:auto;flex-wrap:wrap;gap:0 6px;padding:0 8px;overflow:visible;touch-action:pan-y;white-space:normal;box-shadow:none;border-bottom:1px solid var(--hairline); }
+#emmaus-paper-study .ep-tool-rail&gt;.ep-content-tools,
+#emmaus-paper-study .ep-tool-rail&gt;.ep-window-aux { display:flex;align-items:center;flex:0 1 auto;flex-wrap:wrap;min-height:40px;height:auto;gap:0;padding:0; }
+#emmaus-paper-study .ep-tool-rail&gt;.ep-window-aux { margin-left:auto; }
+#emmaus-paper-study .ep-tool-rail .ep-icon { width:40px;min-width:40px;min-height:40px;height:40px;border-radius:7px; }
+#emmaus-paper-study .ep-tool-rail .ep-text { min-height:40px;height:40px;padding:0 8px;gap:5px;font:400 12px/1.3 var(--sans);color:var(--muted);border-radius:7px; }
+#emmaus-paper-study .ep-tool-rail .ep-text svg { width:16px;height:16px; }
+#emmaus-paper-study .ep-content-tools [data-act=&quot;open-note&quot;],
+#emmaus-paper-study .ep-content-tools [data-act=&quot;open-reference&quot;] { color:var(--accent); }
+#emmaus-paper-study .ep-content-tools [data-act=&quot;content-menu&quot;] { margin-left:0;border:0;border-radius:7px; }
+#emmaus-paper-study .ep-window-aux [data-act=&quot;raise-float&quot;] { color:var(--accent); }
+#emmaus-paper-study .ep-sheet-bar { height:40px;min-height:40px; }
+#emmaus-paper-study .ep-sheet-bar .ep-handle { height:40px; }
+#emmaus-paper-study .ep-scene-head&gt;.ep-icon { height:40px; }
+#emmaus-paper-study .ep-popover { width:224px;padding:4px;border-radius:12px;box-shadow:0 8px 24px light-dark(#25302018,#0005),0 1px 4px light-dark(#2530200c,#0003),0 0 0 1px var(--hairline);animation:ep-menu-appear 140ms ease-out; }
+#emmaus-paper-study .ep-popover button { display:flex;justify-content:flex-start;align-items:center;gap:10px;min-height:44px;padding:10px 12px;border-radius:8px;font:400 13px/1.5 var(--sans);white-space:normal;text-align:left; }
+#emmaus-paper-study .ep-popover button svg { width:17px;height:17px;color:var(--muted); }
+#emmaus-paper-study .ep-popover .ep-danger { border-top:1px solid var(--hairline);border-radius:0 0 8px 8px;color:light-dark(#97604f,#d9a292); }
+#emmaus-paper-study .ep-popover .ep-danger svg { color:inherit; }
+#emmaus-paper-study .ep-window-shortcuts .ep-icon:hover,
+#emmaus-paper-study .ep-content-tools .ep-icon:hover,
+#emmaus-paper-study .ep-tool-rail .ep-icon:hover,
+#emmaus-paper-study .ep-popover button:hover { background:transparent; }
+@media(hover:hover) {
+  #emmaus-paper-study .ep-window-shortcuts .ep-icon:hover,
+  #emmaus-paper-study .ep-tool-rail button:hover,
+  #emmaus-paper-study .ep-popover button:hover { background:var(--soft);color:var(--ink); }
+}
+@keyframes ep-menu-appear { from { opacity:0;transform:translateY(-3px); } to { opacity:1;transform:translateY(0); } }
+#emmaus-paper-study .ep-drawer { padding:22px 16px 14px; }
+#emmaus-paper-study .ep-drawer-caption { margin:8px 8px 20px; }
+#emmaus-paper-study .ep-saved-heading { margin:0;padding:0 8px;min-height:40px; }
+#emmaus-paper-study .ep-saved-heading small { margin-left:6px;font-size:11px; }
+#emmaus-paper-study .ep-saved-list { flex:1 1 auto;min-height:100px;margin:0 -4px 12px;padding:0 4px; }
+#emmaus-paper-study .ep-library-heading { color:var(--muted);font-size:11px;letter-spacing:1px;border-top:1px solid var(--hairline);padding:16px 8px 4px; }
+#emmaus-paper-study .ep-drawer .ep-nav-row { border-radius:10px;padding:9px 10px;gap:12px;min-height:54px; }
+#emmaus-paper-study .ep-drawer .ep-nav-row small { margin-top:2px;font-size:10px; }
+#emmaus-paper-study .ep-drawer footer { margin-top:14px;padding-top:10px; }
+#emmaus-paper-study .ep-drawer footer .ep-text { justify-content:flex-start;padding-left:8px; }
+@media(prefers-reduced-motion:reduce) { #emmaus-paper-study .ep-popover { animation:none; } }
+#emmaus-paper-study .ep-drawer&gt;header { margin-bottom:12px; }
+#emmaus-paper-study .ep-drawer&gt;.ep-nav-row { min-height:44px;padding-top:7px;padding-bottom:7px; }
+@media(max-width:350px) {
+  #emmaus-paper-study .ep-pane-actions.ep-tool-rail { column-gap:0; }
+  #emmaus-paper-study .ep-tool-rail .ep-text { padding-left:6px;padding-right:6px; }
+  #emmaus-paper-study .ep-window-aux [data-act=&quot;raise-float&quot;] { min-width:40px;width:40px;justify-content:center; }
+  #emmaus-paper-study .ep-window-aux [data-act=&quot;raise-float&quot;] span { display:none; }
+}
 &lt;/style&gt;
 &lt;script&gt;/* Window placement is independent of content. This module also runs in Node QA. */
 (function (global) {
@@ -2542,7 +2603,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   const title = w =&gt; w?.kind === &#x27;reading&#x27; ? `${info(M.page(w)?.book)?.name || &#x27;读经&#x27;} ${M.page(w)?.chapter || &#x27;&#x27;}` : w?.kind === &#x27;note&#x27; ? (state.notes[w.contentId]?.text.split(&#x27;\n&#x27;).find(t =&gt; t.trim())?.replace(/^&gt;\s*/, &#x27;&#x27;).slice(0,18) || &#x27;研读笔记&#x27;) : citeLabel(w?.citation) + &#x27; · 释经&#x27;;
   const sceneTitle = scene =&gt; scene.members.map(id =&gt; title(M.get(state,id))).join(&#x27; · &#x27;);
   let state, drawerOpen = false, directory = null, rootCatalog = {book:null,testament:&#x27;旧约&#x27;}, directorySerial = 0, requestId = 0;
-  let menuTarget = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = &#x27;all&#x27;, historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
+  let menuTarget = null, menuAnchor = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = &#x27;all&#x27;, historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
   const dirtyNotes = new Set();
 
   function icons() { globalThis.lucide?.createIcons({root:phone,attrs:{width:18,height:18}}); }
@@ -2824,9 +2885,10 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       const active=id===activeWindowId, revealed=active &amp;&amp; toolsVisible;
       node.classList.toggle(&#x27;is-active&#x27;,active); node.classList.toggle(&#x27;is-quiet&#x27;,!revealed);
       node.dataset.toolsVisible=String(revealed);
-      node.querySelectorAll(&#x27;.ep-window-shortcuts,.ep-content-tools&#x27;).forEach(n=&gt;n.inert=!revealed);
+      node.querySelectorAll(&#x27;.ep-content-tools,.ep-window-aux&#x27;).forEach(n=&gt;n.inert=!revealed);
+      node.querySelectorAll(&#x27;.ep-window-shortcuts button&#x27;).forEach(n=&gt;n.inert=!revealed &amp;&amp; n.dataset.persistent!==&#x27;true&#x27;);
       const sheet=node.closest(&#x27;.ep-sheet&#x27;);
-      if(sheet) { sheet.classList.toggle(&#x27;is-quiet&#x27;,!revealed); sheet.classList.toggle(&#x27;is-active&#x27;,active); sheet.querySelector(&#x27;.ep-window-shortcuts&#x27;).inert=!revealed; }
+      if(sheet) { sheet.classList.toggle(&#x27;is-quiet&#x27;,!revealed); sheet.classList.toggle(&#x27;is-active&#x27;,active); }
     });
     const scene=M.top(state), shown=toolsVisible &amp;&amp; scene?.members.includes(activeWindowId);
     const sceneActions=q(&#x27;.ep-scene-actions&#x27;); if(sceneActions) { sceneActions.inert=!shown; sceneActions.classList.toggle(&#x27;is-hidden&#x27;,!shown); }
@@ -2857,14 +2919,9 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   }
   function windowActions(id) {
     const scene=M.top(state), floating=state.floating.includes(id), paired=scene?.members.length===2 &amp;&amp; scene.members.includes(id);
-    const actions=floating ? [
-      {act:&#x27;pair&#x27;,label:&#x27;对读&#x27;,icon:&#x27;rows-2&#x27;,disabled:!scene || scene.members.length!==1},
-      {act:&#x27;promote&#x27;,label:&#x27;最大化&#x27;,icon:&#x27;maximize-2&#x27;},
-      {act:&#x27;minimize&#x27;,label:&#x27;收为标签&#x27;,icon:&#x27;minus&#x27;},
-    ] : [...(paired ? [{act:&#x27;promote&#x27;,label:&#x27;最大化此窗口&#x27;,icon:&#x27;maximize-2&#x27;}] : []),{act:&#x27;move-float&#x27;,label:paired?&#x27;移出对读，转为浮窗&#x27;:&#x27;转为浮窗&#x27;,icon:&#x27;panel-bottom&#x27;}];
-    actions.push({act:&#x27;pin&#x27;,label:&#x27;复制为浮窗&#x27;,icon:&#x27;copy&#x27;});
-    if(floating) for(const other of state.floating.filter(x=&gt;x!==id)) actions.push({act:&#x27;raise-float&#x27;,id:other,label:&#x27;切换到：&#x27;+title(M.get(state,other)),icon:&#x27;layers&#x27;});
-    actions.push({act:&#x27;close-window&#x27;,label:&#x27;关闭窗口&#x27;,icon:&#x27;x&#x27;});
+    const actions=[{act:&#x27;pin&#x27;,label:&#x27;复制为浮窗&#x27;,icon:&#x27;copy&#x27;}];
+    if(floating &amp;&amp; scene?.members.length===1) actions.push({act:&#x27;pair&#x27;,label:&#x27;与主窗对读&#x27;,icon:wideLayout()?&#x27;columns-2&#x27;:&#x27;rows-2&#x27;});
+    if(paired) actions.push({act:&#x27;unpair&#x27;,id:scene.id,label:unpairLabel(),icon:&#x27;ungroup&#x27;}, {act:&#x27;close-scene&#x27;,id:scene.id,label:&#x27;关闭整个对读组合&#x27;,icon:&#x27;panels-top-left&#x27;,danger:true});
     return actions.map(a=&gt;({id,...a}));
   }
   function contentActions(w) {
@@ -2883,9 +2940,14 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     return [{act:&#x27;commentary-index&#x27;,label:&#x27;本章注释目录&#x27;,icon:&#x27;list&#x27;},{act:&#x27;prev&#x27;,label:&#x27;上一章释经&#x27;,icon:&#x27;chevron-left&#x27;,disabled:w.citation?.book===1&amp;&amp;w.citation?.chapter===1},{act:&#x27;next&#x27;,label:&#x27;下一章释经&#x27;,icon:&#x27;chevron-right&#x27;,disabled:w.citation?.book===66&amp;&amp;w.citation?.chapter===22},{act:&#x27;reference-reading&#x27;,label:&#x27;查看引用经文&#x27;,icon:&#x27;book-open&#x27;,disabled:!w.citation?.book},{act:&#x27;open-note&#x27;,label:&#x27;为引用经文记笔记&#x27;,icon:&#x27;pen-line&#x27;,disabled:!w.citation?.verse}].map(a=&gt;({id:w.id,...a}));
   }
   function actionButtons(actions, compact=true) {
-    return actions.map(a=&gt;button(a.act,a.label,a.icon,a.id,compact?&#x27;ep-icon&#x27;:&#x27;ep-text&#x27;).replace(&#x27;&lt;button &#x27;,`&lt;button title=&quot;${esc(a.label)}&quot;${a.disabled?&#x27; disabled&#x27;:&#x27;&#x27;} `)).join(&#x27;&#x27;);
+    return actions.map(a=&gt;`&lt;button type=&quot;button&quot; class=&quot;${compact&amp;&amp;!a.short?&#x27;ep-icon&#x27;:&#x27;ep-text&#x27;}${a.danger?&#x27; ep-danger&#x27;:&#x27;&#x27;}&quot; data-act=&quot;${a.act}&quot; data-id=&quot;${esc(a.id)}&quot; title=&quot;${esc(a.label)}&quot; aria-label=&quot;${esc(a.label)}&quot;${a.disabled?&#x27; disabled&#x27;:&#x27;&#x27;}${a.persistent?&#x27; data-persistent=&quot;true&quot;&#x27;:&#x27;&#x27;}&gt;${icon(a.icon)}${!compact||a.short?`&lt;span&gt;${esc(a.short||a.label)}&lt;/span&gt;`:&#x27;&#x27;}&lt;/button&gt;`).join(&#x27;&#x27;);
   }
-  function windowShortcuts(id) { return `&lt;div class=&quot;ep-window-shortcuts&quot; role=&quot;group&quot; aria-label=&quot;窗口操作&quot;&gt;${actionButtons(windowActions(id))}&lt;/div&gt;`; }
+  function windowShortcuts(id) {
+    const floating=state.floating.includes(id),scene=M.top(state),paired=scene?.members.length===2&amp;&amp;scene.members.includes(id);
+    const actions=floating ? [{act:&#x27;promote&#x27;,label:&#x27;最大化&#x27;,icon:&#x27;maximize-2&#x27;,persistent:true},{act:&#x27;minimize&#x27;,label:&#x27;收为标签&#x27;,icon:&#x27;minus&#x27;,persistent:true}] : [...(paired?[{act:&#x27;promote&#x27;,label:&#x27;最大化此窗口&#x27;,icon:&#x27;maximize-2&#x27;}]:[]),{act:&#x27;move-float&#x27;,label:paired?&#x27;移出对读，转为浮窗&#x27;:&#x27;转为浮窗&#x27;,icon:&#x27;picture-in-picture-2&#x27;}];
+    actions.push({act:&#x27;pane-menu&#x27;,label:&#x27;更多窗口操作&#x27;,icon:&#x27;ellipsis&#x27;},{act:&#x27;close-window&#x27;,label:&#x27;关闭窗口&#x27;,icon:&#x27;x&#x27;});
+    return `&lt;div class=&quot;ep-window-shortcuts&quot; role=&quot;group&quot; aria-label=&quot;窗口操作&quot;&gt;${actionButtons(actions.map(a=&gt;({id,...a})))}&lt;/div&gt;`;
+  }
   function restorePosition(node,w) {
     node._suppressUntil = performance.now() + 400;
     const scroll = node.querySelector(w.kind === &#x27;note&#x27; ? &#x27;textarea&#x27; : &#x27;.ep-scroll&#x27;);
@@ -2898,13 +2960,20 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions=node.querySelector(&#x27;.ep-pane-actions&#x27;), scene=M.top(state), label=w.kind===&#x27;reading&#x27;?&#x27;经文&#x27;:w.kind===&#x27;note&#x27;?&#x27;笔记&#x27;:&#x27;释经&#x27;;
-    const combo=scene?.members.length===2&amp;&amp;scene.members[0]===w.id ? `&lt;div class=&quot;ep-scene-actions&quot; role=&quot;group&quot; aria-label=&quot;对读组合操作&quot;&gt;${button(&#x27;unpair&#x27;,unpairLabel(),&#x27;rows-2&#x27;,scene.id)}${button(&#x27;close-scene&#x27;,&#x27;关闭整个组合&#x27;,&#x27;x&#x27;,scene.id)}${button(&#x27;scene-menu&#x27;,&#x27;组合操作菜单&#x27;,&#x27;ellipsis&#x27;,scene.id)}&lt;/div&gt;` : &#x27;&#x27;;
-    const left=actions.scrollLeft;
-    actions.innerHTML=`&lt;div class=&quot;ep-content-tools&quot; role=&quot;group&quot; aria-label=&quot;${label}操作&quot;&gt;${actionButtons(contentActions(w))}${button(&#x27;content-menu&#x27;,label+&#x27;操作菜单&#x27;,&#x27;ellipsis-vertical&#x27;,w.id)}&lt;/div&gt;${windowShortcuts(w.id)}${combo}`;
-    actions.setAttribute(&#x27;aria-label&#x27;,&#x27;阅读与窗口快捷操作，可横向滑动&#x27;);actions.scrollLeft=left;
-    const context=node.querySelector(&#x27;.ep-title-context&#x27;);
-    if(context){const d=w.kind===&#x27;reference&#x27;&amp;&amp;commentaryCache.get(w.citation?.book+&#x27;:&#x27;+w.citation?.chapter);context.textContent=w.kind===&#x27;reading&#x27;&amp;&amp;M.page(w).selected?&#x27;· &#x27;+M.page(w).selected+&#x27;节&#x27;:w.kind===&#x27;reference&#x27;?&#x27;综合解读&#x27;:&#x27;&#x27;;if(d&amp;&amp;/^https:\/\/cmcbiblereading\.(com|net)\//.test(d.url))context.innerHTML=`&lt;a href=&quot;${esc(d.url)}&quot; target=&quot;_blank&quot; rel=&quot;noopener noreferrer&quot; title=&quot;文字版 · 查看含图表的本章原文&quot;&gt;综合解读 ↗&lt;/a&gt;`;}
+    const actions=node.querySelector(&#x27;.ep-pane-actions&#x27;), label=w.kind===&#x27;reading&#x27;?&#x27;经文&#x27;:w.kind===&#x27;note&#x27;?&#x27;笔记&#x27;:&#x27;释经&#x27;;
+    // Keep one window identity after note edits, without replacing focused controls.
+    const name=title(w);node.setAttribute(&#x27;aria-label&#x27;,name);
+    node.querySelector(&#x27;[data-reading-title]&#x27;).textContent=name;
+    node.querySelector(&#x27;.ep-pane-title&#x27;).title=name;
+    node.closest(&#x27;.ep-sheet&#x27;)?.setAttribute(&#x27;aria-label&#x27;,&#x27;浮窗：&#x27;+name);
+    const shorts={&#x27;open-note&#x27;:&#x27;笔记&#x27;,&#x27;open-reference&#x27;:&#x27;释经&#x27;,&#x27;note-edit&#x27;:node.dataset.editing===&#x27;true&#x27;?&#x27;完成&#x27;:&#x27;编辑&#x27;,&#x27;commentary-index&#x27;:&#x27;目录&#x27;,&#x27;reference-reading&#x27;:&#x27;经文&#x27;};
+    const common=contentActions(w).filter(a=&gt;![&#x27;back&#x27;,&#x27;forward&#x27;].includes(a.act)&amp;&amp;!([&#x27;open-note&#x27;,&#x27;open-reference&#x27;].includes(a.act)&amp;&amp;a.disabled)).map(a=&gt;({...a,short:shorts[a.act]}));
+    const aux=[];
+    if(state.floating.includes(w.id)) {
+      for(const other of state.floating.filter(id=&gt;id!==w.id))aux.push({id:other,act:&#x27;raise-float&#x27;,label:&#x27;切换到：&#x27;+title(M.get(state,other)),short:&#x27;另一浮窗&#x27;,icon:&#x27;layers&#x27;});
+    }
+    actions.innerHTML=`&lt;div class=&quot;ep-content-tools&quot; role=&quot;group&quot; aria-label=&quot;${label}操作&quot;&gt;${actionButtons(common)}${w.kind===&#x27;reading&#x27;?button(&#x27;content-menu&#x27;,&#x27;经文浏览历史&#x27;,&#x27;history&#x27;,w.id):&#x27;&#x27;}&lt;/div&gt;${aux.length?`&lt;div class=&quot;ep-window-aux&quot; role=&quot;group&quot; aria-label=&quot;窗口切换&quot;&gt;${actionButtons(aux)}&lt;/div&gt;`:&#x27;&#x27;}`;
+    actions.setAttribute(&#x27;aria-label&#x27;,label+&#x27;工具&#x27;);
     syncChrome();
   }
   function renderNote(node,w) {
@@ -2942,9 +3011,9 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       node.innerHTML = &#x27;&lt;header class=&quot;ep-pane-head&quot;&gt;&lt;/header&gt;&lt;div class=&quot;ep-pane-actions ep-tool-rail&quot; role=&quot;toolbar&quot;&gt;&lt;/div&gt;&lt;div class=&quot;ep-scroll&quot;&gt;&lt;/div&gt;&#x27;;
       panes.set(w.id,node); watchScroll(node,node.querySelector(&#x27;.ep-scroll&#x27;));
     }
-    const header = node.querySelector(&#x27;.ep-pane-head&#x27;), float = state.floating.includes(w.id);
+    const header = node.querySelector(&#x27;.ep-pane-head&#x27;);
     node.setAttribute(&#x27;aria-label&#x27;,title(w)); node.dataset.kind = w.kind;
-    header.innerHTML = `&lt;button class=&quot;ep-pane-title&quot; data-act=&quot;${w.kind===&#x27;reading&#x27;||w.kind===&#x27;reference&#x27;?&#x27;reading-directory&#x27;:&#x27;activate&#x27;}&quot; data-id=&quot;${esc(w.id)}&quot; aria-label=&quot;${w.kind===&#x27;note&#x27;?&#x27;显示窗口工具&#x27;:&#x27;选择书卷和章节&#x27;}&quot;&gt;&lt;span data-reading-title&gt;${esc(title(w))}&lt;/span&gt;${w.kind===&#x27;note&#x27;?&#x27;&#x27;:icon(&#x27;chevron-down&#x27;)}&lt;/button&gt;&lt;span class=&quot;ep-title-context&quot;&gt;&lt;/span&gt;${button(&#x27;pane-menu&#x27;,&#x27;窗口操作菜单&#x27;,&#x27;ellipsis&#x27;,w.id,&#x27;ep-icon ep-title-menu&#x27;)}`;
+    header.innerHTML = `&lt;button class=&quot;ep-pane-title&quot; data-act=&quot;${w.kind===&#x27;reading&#x27;||w.kind===&#x27;reference&#x27;?&#x27;reading-directory&#x27;:&#x27;activate&#x27;}&quot; data-id=&quot;${esc(w.id)}&quot; aria-label=&quot;${w.kind===&#x27;note&#x27;?&#x27;显示笔记工具&#x27;:&#x27;选择书卷和章节&#x27;}&quot; title=&quot;${esc(title(w))}&quot;&gt;${w.kind===&#x27;note&#x27;?&#x27;&lt;span class=&quot;ep-kind-label&quot;&gt;笔记&lt;/span&gt;&#x27;:&#x27;&#x27;}&lt;span data-reading-title&gt;${esc(title(w))}&lt;/span&gt;${w.kind===&#x27;note&#x27;?&#x27;&#x27;:icon(&#x27;chevron-down&#x27;)}&lt;/button&gt;${windowShortcuts(w.id)}`;
 
     const scroll = node.querySelector(&#x27;.ep-scroll&#x27;);
     if (w.kind === &#x27;reading&#x27;) {
@@ -3008,18 +3077,27 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
     requestAnimationFrame(() =&gt; panes.forEach((node,id) =&gt; { if (node.isConnected &amp;&amp; node.dataset.ready === &#x27;true&#x27;) restorePosition(node,M.get(state,id)); }));
   }
   function renderSaved() {
-    q(&#x27;[data-saved-count]&#x27;).textContent = state.scenes.length;
-    q(&#x27;.ep-saved-list&#x27;).innerHTML = [...state.scenes].reverse().map(scene =&gt; `&lt;button class=&quot;ep-nav-row${scene === M.top(state) ? &#x27; is-current&#x27; : &#x27;&#x27;}&quot; data-resume=&quot;${esc(scene.id)}&quot;&gt;${icon(scene.members.length === 2 ? &#x27;rows-2&#x27; : &#x27;book-open&#x27;)}&lt;span&gt;${esc(sceneTitle(scene))}&lt;small&gt;${scene === M.top(state) ? &#x27;当前阅读&#x27; : &#x27;点按最大化继续&#x27;}${scene.members.length === 2 ? &#x27; · 双窗&#x27; : &#x27;&#x27;}&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;`).join(&#x27;&#x27;) || &#x27;&lt;p class=&quot;ep-empty&quot;&gt;留下的阅读现场，会在这里继续。&lt;/p&gt;&#x27;;
+    q(&#x27;[data-saved-count]&#x27;).textContent = state.scenes.length+state.floating.length+state.tabs.length;
+    const row=(id,attrs,kind)=&gt;`&lt;button class=&quot;ep-nav-row&quot; ${attrs}&gt;${icon(kind===&#x27;悬浮标签&#x27;?&#x27;bookmark&#x27;:&#x27;picture-in-picture-2&#x27;)}&lt;span&gt;${esc(title(M.get(state,id)))}&lt;small&gt;${kind}${M.get(state,id)?.kind===&#x27;note&#x27;?&#x27; · 笔记&#x27;:&#x27;&#x27;}&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;`;
+    q(&#x27;.ep-saved-list&#x27;).innerHTML = [...state.scenes].reverse().map(scene =&gt; `&lt;button class=&quot;ep-nav-row${scene === M.top(state) ? &#x27; is-current&#x27; : &#x27;&#x27;}&quot; data-resume=&quot;${esc(scene.id)}&quot;&gt;${icon(scene.members.length === 2 ? &#x27;columns-2&#x27; : &#x27;book-open&#x27;)}&lt;span&gt;${esc(sceneTitle(scene))}&lt;small&gt;${scene === M.top(state) ? &#x27;当前阅读&#x27; : &#x27;最大化窗口&#x27;}${scene.members.length === 2 ? &#x27; · 对读&#x27; : &#x27;&#x27;}&lt;/small&gt;&lt;/span&gt;&lt;/button&gt;`).join(&#x27;&#x27;) + [...state.floating].reverse().map(id=&gt;row(id,`data-act=&quot;focus-float&quot; data-id=&quot;${esc(id)}&quot;`,&#x27;浮窗&#x27;)).join(&#x27;&#x27;) + state.tabs.map(t=&gt;row(t.id,`data-tab=&quot;${esc(t.id)}&quot;`,&#x27;悬浮标签&#x27;)).join(&#x27;&#x27;) || &#x27;&lt;p class=&quot;ep-empty&quot;&gt;打开的窗口会留在这里。&lt;/p&gt;&#x27;;
   }
-  function closeMenu() { menuTarget = null; q(&#x27;.ep-popover&#x27;).hidden = q(&#x27;.ep-menu-scrim&#x27;).hidden = true; }
+  function closeMenu(restoreFocus=false) {
+    const anchor=menuAnchor; menuTarget=null;menuAnchor=null;
+    anchor?.setAttribute(&#x27;aria-expanded&#x27;,&#x27;false&#x27;);
+    q(&#x27;.ep-popover&#x27;).hidden=q(&#x27;.ep-menu-scrim&#x27;).hidden=true;
+    if(restoreFocus&amp;&amp;anchor?.isConnected)anchor.focus({preventScroll:true});
+  }
   function menu(id,anchor,isScene=false,isContent=false) {
-    closeMenu(); menuTarget = id; const panel=q(&#x27;.ep-popover&#x27;), w=M.get(state,id);
+    if(menuAnchor===anchor){closeMenu(true);return;}
+    closeMenu(); menuTarget = id;menuAnchor=anchor;anchor.setAttribute(&#x27;aria-expanded&#x27;,&#x27;true&#x27;);anchor.setAttribute(&#x27;aria-haspopup&#x27;,&#x27;menu&#x27;); const panel=q(&#x27;.ep-popover&#x27;), w=M.get(state,id);
     const label=isScene?&#x27;对读组合操作&#x27;:isContent ? w?.kind===&#x27;reading&#x27;?&#x27;经文操作&#x27;:w?.kind===&#x27;note&#x27;?&#x27;笔记操作&#x27;:&#x27;释经操作&#x27; : &#x27;窗口操作&#x27;;
-    const actions=isScene ? [{act:&#x27;unpair&#x27;,label:unpairLabel(),icon:&#x27;rows-2&#x27;,id},{act:&#x27;close-scene&#x27;,label:&#x27;关闭整个组合&#x27;,icon:&#x27;x&#x27;,id}] : isContent ? contentActions(w) : windowActions(id);
+    const actions=isScene ? [{act:&#x27;unpair&#x27;,label:unpairLabel(),icon:&#x27;rows-2&#x27;,id},{act:&#x27;close-scene&#x27;,label:&#x27;关闭整个组合&#x27;,icon:&#x27;x&#x27;,id}] : isContent ? contentActions(w).filter(a=&gt;[&#x27;back&#x27;,&#x27;forward&#x27;].includes(a.act)) : windowActions(id);
     panel.setAttribute(&#x27;aria-label&#x27;,label); panel.dataset.scope=isScene?&#x27;scene&#x27;:isContent?&#x27;content&#x27;:&#x27;window&#x27;;
-    panel.innerHTML=`&lt;span class=&quot;ep-menu-label&quot;&gt;${label}&lt;/span&gt;`+actionButtons(actions,false);
+    panel.innerHTML=actionButtons(actions,false);panel.querySelectorAll(&#x27;button&#x27;).forEach(b=&gt;b.setAttribute(&#x27;role&#x27;,&#x27;menuitem&#x27;));
     panel.hidden = q(&#x27;.ep-menu-scrim&#x27;).hidden = false; const a=anchor.getBoundingClientRect(), p=phone.getBoundingClientRect();
-    panel.style.left=clamp(a.right-p.left-220,12,phone.clientWidth-232)+&#x27;px&#x27;; panel.style.top=clamp(a.bottom-p.top+5,12,Math.max(12,phone.clientHeight-panel.offsetHeight-15))+&#x27;px&#x27;; icons();
+    const below=a.bottom-p.top+6,above=a.top-p.top-panel.offsetHeight-6;
+    panel.style.left=clamp(a.right-p.left-panel.offsetWidth,12,phone.clientWidth-panel.offsetWidth-12)+&#x27;px&#x27;; panel.style.top=clamp(below+panel.offsetHeight&lt;=phone.clientHeight-12?below:above,12,Math.max(12,phone.clientHeight-panel.offsetHeight-12))+&#x27;px&#x27;;icons();
+    panel.querySelector(&#x27;button:not(:disabled)&#x27;)?.focus({preventScroll:true});
   }
   function updateInert() {
     const capacityOpen = !q(&#x27;.ep-capacity&#x27;).hidden;
@@ -3104,12 +3182,10 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   phone.addEventListener(&#x27;click&#x27;,event =&gt; {
     if (performance.now() &lt; ignoreClickUntil) { event.preventDefault(); return; }
     const surface=event.target.closest(&#x27;.ep-pane,.ep-sheet&#x27;), tappedId=surface?.dataset.windowId;
-    const wasRevealed=tappedId===activeWindowId &amp;&amp; toolsVisible;
     if(tappedId) activateWindow(tappedId);
     const b = event.target.closest(&#x27;button&#x27;); if (!b || b.disabled) return;
-    if(b.classList.contains(&#x27;ep-pane-title&#x27;) &amp;&amp; !wasRevealed) return;
     motionOrigin = b.getBoundingClientRect();
-    if (b.dataset.tab) { change(() =&gt; M.openFloat(state,b.dataset.tab,&#x27;打开悬浮标签&#x27;)); return; }
+    if (b.dataset.tab) { if(drawerOpen)drawer(false); change(() =&gt; M.openFloat(state,b.dataset.tab,&#x27;打开悬浮标签&#x27;)); return; }
     if (b.dataset.resume) { drawer(false); change(() =&gt; M.resume(state,b.dataset.resume)); return; }
     if (b.dataset.restoreEvent) { change(() =&gt; M.restoreEvent(state,b.dataset.restoreEvent)); q(&#x27;.ep-history-panel&#x27;).hidden = true; updateInert(); return; }
     if (b.dataset.filter) { historyFilter = b.dataset.filter; historyLimit = 50; renderHistory(); return; }
@@ -3132,6 +3208,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
         break;
       }
       case &#x27;raise-float&#x27;: closeMenu(); activateWindow(id); break;
+      case &#x27;focus-float&#x27;: drawer(false); activateWindow(id); break;
       case &#x27;activate&#x27;: activateWindow(id); break;
       case &#x27;drawer&#x27;: drawer(true); break;
       case &#x27;drawer-close&#x27;: drawer(false); break;
@@ -3175,7 +3252,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
       case &#x27;pane-menu&#x27;: menu(id,b); break;
       case &#x27;content-menu&#x27;: menu(id,b,false,true); break;
       case &#x27;scene-menu&#x27;: menu(id,b,true); break;
-      case &#x27;menu-close&#x27;: closeMenu(); break;
+      case &#x27;menu-close&#x27;: closeMenu(true); break;
       case &#x27;next&#x27;: closeMenu(); navigate(id,1); break;
       case &#x27;prev&#x27;: closeMenu(); navigate(id,-1); break;
       case &#x27;back&#x27;: change(() =&gt; M.travel(state,id,-1)); break;
@@ -3206,7 +3283,7 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   phone.addEventListener(&#x27;pointerdown&#x27;,event =&gt; {
     if (event.button !== 0) return;
     if (!q(&#x27;.ep-capacity&#x27;).hidden) return;
-    if(event.target.closest(&#x27;.ep-tool-rail&#x27;)) {gesture=null;return;}
+    if(event.target.closest(&#x27;.ep-tool-rail,.ep-pane-head&#x27;)) {gesture=null;return;}
     const rect = phone.getBoundingClientRect(), handle = event.target.closest(&#x27;.ep-handle,.ep-resize,.ep-divider&#x27;);
     const sheet=event.target.closest(&#x27;.ep-sheet&#x27;), w=sheet &amp;&amp; M.get(state,sheet.dataset.windowId), geometry=w &amp;&amp; floatGeometry(w);
     if(w &amp;&amp; !drawerOpen &amp;&amp; !directory) raiseFloat(w.id);
@@ -3248,8 +3325,16 @@ html #emmaus-paper-study .ep-phone { height:min(800px,calc(100vh - 48px));height
   phone.addEventListener(&#x27;pointercancel&#x27;,event =&gt; endGesture(event,true),true);
   phone.addEventListener(&#x27;keydown&#x27;,event =&gt; {
     if (event.key === &#x27;Escape&#x27;) {
-      if (!q(&#x27;.ep-capacity&#x27;).hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q(&#x27;.ep-history-panel&#x27;).hidden) { q(&#x27;.ep-history-panel&#x27;).hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else hideTools();
+      if (!q(&#x27;.ep-capacity&#x27;).hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q(&#x27;.ep-history-panel&#x27;).hidden) { q(&#x27;.ep-history-panel&#x27;).hidden = true; updateInert(); } else if (menuTarget) closeMenu(true); else if (drawerOpen) drawer(false); else hideTools();
       event.preventDefault(); return;
+    }
+    if(menuTarget) {
+      const items=[...q(&#x27;.ep-popover&#x27;).querySelectorAll(&#x27;button:not(:disabled)&#x27;)],index=items.indexOf(document.activeElement);
+      if([&#x27;ArrowDown&#x27;,&#x27;ArrowUp&#x27;,&#x27;Home&#x27;,&#x27;End&#x27;].includes(event.key)) {
+        event.preventDefault();const next=event.key===&#x27;Home&#x27;?0:event.key===&#x27;End&#x27;?items.length-1:(index+(event.key===&#x27;ArrowDown&#x27;?1:-1)+items.length)%items.length;
+        items[next]?.focus({preventScroll:true});return;
+      }
+      if(event.key===&#x27;Tab&#x27;)closeMenu(true);
     }
     if(event.target.classList.contains(&#x27;ep-pane&#x27;) &amp;&amp; [&#x27;Enter&#x27;,&#x27; &#x27;].includes(event.key)) { event.preventDefault(); activateWindow(event.target.dataset.windowId); return; }
     const handle = event.target.closest(&#x27;.ep-handle,.ep-resize,.ep-divider&#x27;);

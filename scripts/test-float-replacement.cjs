@@ -20,8 +20,8 @@ for(const scenario of ['new','copy','main','pair-upper','pair-lower','note-refer
   pass('浮窗引用衍生第二浮窗，原笔记不变；点击后窗置顶，第三浮窗取消无副作用');
  }else{
   const before=placement(await st());
-  if(scenario==='tab')await tap(`[data-tab="${tab.id}"]`);
-  else{const id=scenario==='pair-lower'?lower.id:a.id;await tap(`.ep-main .ep-pane[data-window-id="${id}"] .ep-icon[data-act=pane-menu]`);if(scenario==='new'){await tap('[data-act=menu-close]');await tap(`.ep-main .ep-pane[data-window-id="${id}"] .ep-content-tools [data-act=open-note]`);}else await tap('.ep-popover [data-act='+ (scenario==='copy'?'pin':'move-float')+']');}
+  if(scenario==='tab')await tap(`.ep-tabs [data-tab="${tab.id}"]`);
+  else{const id=scenario==='pair-lower'?lower.id:a.id;if(scenario==='copy'){await tap(`.ep-main .ep-pane[data-window-id="${id}"] .ep-icon[data-act=pane-menu]`);await tap('.ep-popover [data-act=pin]');}else await tap(`.ep-main .ep-pane[data-window-id="${id}"] [data-act=${scenario==='new'?'open-note':'move-float'}]`);}
   await expect(f.locator('.ep-capacity')).toBeVisible();assert.equal(placement(await st()),before);await expect(f.locator('.ep-main')).toHaveAttribute('inert','');await p.screenshot({path:path.join(out,'capacity-'+scenario+'.png')});
   await tap('[data-act=capacity-cancel]');assert.equal(placement(await st()),before);pass(scenario+' 满额拦截且取消不变');
  }
@@ -41,7 +41,7 @@ for(const scenario of ['new','copy','main','pair-upper','pair-lower','note-refer
 }
 {
  const{s,base,a}=setup(),lower=M.openNew(s,'reading',{book:43,chapter:3});M.pair(s,lower.id);const one=M.openNew(s,'note'),two=M.openNew(s,'reference');const floats=JSON.stringify(s.floating);const{ctx,p,f,st,tap}=await start(s);
- await tap('[data-act=scene-menu]');await tap('[data-act=unpair]');const after=await st();assert.equal(after.scenes.at(-1).members[0],a.id);assert.equal(after.scenes.at(-2).members[0],lower.id);assert.equal(after.scenes[0].members[0],base.id);assert.equal(JSON.stringify(after.floating),floats);await tap('.ep-main [data-act=close-window]');assert.equal((await st()).scenes.at(-1).members[0],lower.id);pass('拆除对读，上窗在顶层，下窗紧随其后，两浮窗保留');await ctx.close();
+ await tap(`.ep-main .ep-pane[data-window-id="${a.id}"] [data-act=pane-menu]`);await tap('[data-act=unpair]');const after=await st();assert.equal(after.scenes.at(-1).members[0],a.id);assert.equal(after.scenes.at(-2).members[0],lower.id);assert.equal(after.scenes[0].members[0],base.id);assert.equal(JSON.stringify(after.floating),floats);await tap('.ep-main [data-act=close-window]');assert.equal((await st()).scenes.at(-1).members[0],lower.id);pass('拆除对读，上窗在顶层，下窗紧随其后，两浮窗保留');await ctx.close();
 }
 {
  const{s}=setup(),one=M.openNew(s,'reading',{book:43,chapter:3}),two=M.openNew(s,'note',{text:'可上下移动的笔记\n罗8:29'});const{ctx,p,f,st,tap}=await start(s),cdp=await ctx.newCDPSession(p);

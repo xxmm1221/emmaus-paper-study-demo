@@ -12,7 +12,7 @@
   const title = w => w?.kind === 'reading' ? `${info(M.page(w)?.book)?.name || '读经'} ${M.page(w)?.chapter || ''}` : w?.kind === 'note' ? (state.notes[w.contentId]?.text.split('\n').find(t => t.trim())?.replace(/^>\s*/, '').slice(0,18) || '研读笔记') : citeLabel(w?.citation) + ' · 释经';
   const sceneTitle = scene => scene.members.map(id => title(M.get(state,id))).join(' · ');
   let state, drawerOpen = false, directory = null, rootCatalog = {book:null,testament:'旧约'}, directorySerial = 0, requestId = 0;
-  let menuTarget = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = 'all', historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
+  let menuTarget = null, menuAnchor = null, selection = null, toastTimer, saveTimer, noteTimer, saveSerial = 0, historyFilter = 'all', historyLimit = 50, gesture = null, ignoreClickUntil = 0, lastModalFocus = null;
   const dirtyNotes = new Set();
 
   function icons() { globalThis.lucide?.createIcons({root:phone,attrs:{width:18,height:18}}); }
@@ -294,9 +294,10 @@
       const active=id===activeWindowId, revealed=active && toolsVisible;
       node.classList.toggle('is-active',active); node.classList.toggle('is-quiet',!revealed);
       node.dataset.toolsVisible=String(revealed);
-      node.querySelectorAll('.ep-window-shortcuts,.ep-content-tools').forEach(n=>n.inert=!revealed);
+      node.querySelectorAll('.ep-content-tools,.ep-window-aux').forEach(n=>n.inert=!revealed);
+      node.querySelectorAll('.ep-window-shortcuts button').forEach(n=>n.inert=!revealed && n.dataset.persistent!=='true');
       const sheet=node.closest('.ep-sheet');
-      if(sheet) { sheet.classList.toggle('is-quiet',!revealed); sheet.classList.toggle('is-active',active); sheet.querySelector('.ep-window-shortcuts').inert=!revealed; }
+      if(sheet) { sheet.classList.toggle('is-quiet',!revealed); sheet.classList.toggle('is-active',active); }
     });
     const scene=M.top(state), shown=toolsVisible && scene?.members.includes(activeWindowId);
     const sceneActions=q('.ep-scene-actions'); if(sceneActions) { sceneActions.inert=!shown; sceneActions.classList.toggle('is-hidden',!shown); }
@@ -327,14 +328,9 @@
   }
   function windowActions(id) {
     const scene=M.top(state), floating=state.floating.includes(id), paired=scene?.members.length===2 && scene.members.includes(id);
-    const actions=floating ? [
-      {act:'pair',label:'对读',icon:'rows-2',disabled:!scene || scene.members.length!==1},
-      {act:'promote',label:'最大化',icon:'maximize-2'},
-      {act:'minimize',label:'收为标签',icon:'minus'},
-    ] : [...(paired ? [{act:'promote',label:'最大化此窗口',icon:'maximize-2'}] : []),{act:'move-float',label:paired?'移出对读，转为浮窗':'转为浮窗',icon:'panel-bottom'}];
-    actions.push({act:'pin',label:'复制为浮窗',icon:'copy'});
-    if(floating) for(const other of state.floating.filter(x=>x!==id)) actions.push({act:'raise-float',id:other,label:'切换到：'+title(M.get(state,other)),icon:'layers'});
-    actions.push({act:'close-window',label:'关闭窗口',icon:'x'});
+    const actions=[{act:'pin',label:'复制为浮窗',icon:'copy'}];
+    if(floating && scene?.members.length===1) actions.push({act:'pair',label:'与主窗对读',icon:wideLayout()?'columns-2':'rows-2'});
+    if(paired) actions.push({act:'unpair',id:scene.id,label:unpairLabel(),icon:'ungroup'}, {act:'close-scene',id:scene.id,label:'关闭整个对读组合',icon:'panels-top-left',danger:true});
     return actions.map(a=>({id,...a}));
   }
   function contentActions(w) {
@@ -353,9 +349,14 @@
     return [{act:'commentary-index',label:'本章注释目录',icon:'list'},{act:'prev',label:'上一章释经',icon:'chevron-left',disabled:w.citation?.book===1&&w.citation?.chapter===1},{act:'next',label:'下一章释经',icon:'chevron-right',disabled:w.citation?.book===66&&w.citation?.chapter===22},{act:'reference-reading',label:'查看引用经文',icon:'book-open',disabled:!w.citation?.book},{act:'open-note',label:'为引用经文记笔记',icon:'pen-line',disabled:!w.citation?.verse}].map(a=>({id:w.id,...a}));
   }
   function actionButtons(actions, compact=true) {
-    return actions.map(a=>button(a.act,a.label,a.icon,a.id,compact?'ep-icon':'ep-text').replace('<button ',`<button title="${esc(a.label)}"${a.disabled?' disabled':''} `)).join('');
+    return actions.map(a=>`<button type="button" class="${compact&&!a.short?'ep-icon':'ep-text'}${a.danger?' ep-danger':''}" data-act="${a.act}" data-id="${esc(a.id)}" title="${esc(a.label)}" aria-label="${esc(a.label)}"${a.disabled?' disabled':''}${a.persistent?' data-persistent="true"':''}>${icon(a.icon)}${!compact||a.short?`<span>${esc(a.short||a.label)}</span>`:''}</button>`).join('');
   }
-  function windowShortcuts(id) { return `<div class="ep-window-shortcuts" role="group" aria-label="窗口操作">${actionButtons(windowActions(id))}</div>`; }
+  function windowShortcuts(id) {
+    const floating=state.floating.includes(id),scene=M.top(state),paired=scene?.members.length===2&&scene.members.includes(id);
+    const actions=floating ? [{act:'promote',label:'最大化',icon:'maximize-2',persistent:true},{act:'minimize',label:'收为标签',icon:'minus',persistent:true}] : [...(paired?[{act:'promote',label:'最大化此窗口',icon:'maximize-2'}]:[]),{act:'move-float',label:paired?'移出对读，转为浮窗':'转为浮窗',icon:'picture-in-picture-2'}];
+    actions.push({act:'pane-menu',label:'更多窗口操作',icon:'ellipsis'},{act:'close-window',label:'关闭窗口',icon:'x'});
+    return `<div class="ep-window-shortcuts" role="group" aria-label="窗口操作">${actionButtons(actions.map(a=>({id,...a})))}</div>`;
+  }
   function restorePosition(node,w) {
     node._suppressUntil = performance.now() + 400;
     const scroll = node.querySelector(w.kind === 'note' ? 'textarea' : '.ep-scroll');
@@ -368,13 +369,20 @@
     node._restoring = false;
   }
   function paneActions(node,w) {
-    const actions=node.querySelector('.ep-pane-actions'), scene=M.top(state), label=w.kind==='reading'?'经文':w.kind==='note'?'笔记':'释经';
-    const combo=scene?.members.length===2&&scene.members[0]===w.id ? `<div class="ep-scene-actions" role="group" aria-label="对读组合操作">${button('unpair',unpairLabel(),'rows-2',scene.id)}${button('close-scene','关闭整个组合','x',scene.id)}${button('scene-menu','组合操作菜单','ellipsis',scene.id)}</div>` : '';
-    const left=actions.scrollLeft;
-    actions.innerHTML=`<div class="ep-content-tools" role="group" aria-label="${label}操作">${actionButtons(contentActions(w))}${button('content-menu',label+'操作菜单','ellipsis-vertical',w.id)}</div>${windowShortcuts(w.id)}${combo}`;
-    actions.setAttribute('aria-label','阅读与窗口快捷操作，可横向滑动');actions.scrollLeft=left;
-    const context=node.querySelector('.ep-title-context');
-    if(context){const d=w.kind==='reference'&&commentaryCache.get(w.citation?.book+':'+w.citation?.chapter);context.textContent=w.kind==='reading'&&M.page(w).selected?'· '+M.page(w).selected+'节':w.kind==='reference'?'综合解读':'';if(d&&/^https:\/\/cmcbiblereading\.(com|net)\//.test(d.url))context.innerHTML=`<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer" title="文字版 · 查看含图表的本章原文">综合解读 ↗</a>`;}
+    const actions=node.querySelector('.ep-pane-actions'), label=w.kind==='reading'?'经文':w.kind==='note'?'笔记':'释经';
+    // Keep one window identity after note edits, without replacing focused controls.
+    const name=title(w);node.setAttribute('aria-label',name);
+    node.querySelector('[data-reading-title]').textContent=name;
+    node.querySelector('.ep-pane-title').title=name;
+    node.closest('.ep-sheet')?.setAttribute('aria-label','浮窗：'+name);
+    const shorts={'open-note':'笔记','open-reference':'释经','note-edit':node.dataset.editing==='true'?'完成':'编辑','commentary-index':'目录','reference-reading':'经文'};
+    const common=contentActions(w).filter(a=>!['back','forward'].includes(a.act)&&!(['open-note','open-reference'].includes(a.act)&&a.disabled)).map(a=>({...a,short:shorts[a.act]}));
+    const aux=[];
+    if(state.floating.includes(w.id)) {
+      for(const other of state.floating.filter(id=>id!==w.id))aux.push({id:other,act:'raise-float',label:'切换到：'+title(M.get(state,other)),short:'另一浮窗',icon:'layers'});
+    }
+    actions.innerHTML=`<div class="ep-content-tools" role="group" aria-label="${label}操作">${actionButtons(common)}${w.kind==='reading'?button('content-menu','经文浏览历史','history',w.id):''}</div>${aux.length?`<div class="ep-window-aux" role="group" aria-label="窗口切换">${actionButtons(aux)}</div>`:''}`;
+    actions.setAttribute('aria-label',label+'工具');
     syncChrome();
   }
   function renderNote(node,w) {
@@ -412,9 +420,9 @@
       node.innerHTML = '<header class="ep-pane-head"></header><div class="ep-pane-actions ep-tool-rail" role="toolbar"></div><div class="ep-scroll"></div>';
       panes.set(w.id,node); watchScroll(node,node.querySelector('.ep-scroll'));
     }
-    const header = node.querySelector('.ep-pane-head'), float = state.floating.includes(w.id);
+    const header = node.querySelector('.ep-pane-head');
     node.setAttribute('aria-label',title(w)); node.dataset.kind = w.kind;
-    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind==='reading'||w.kind==='reference'?'reading-directory':'activate'}" data-id="${esc(w.id)}" aria-label="${w.kind==='note'?'显示窗口工具':'选择书卷和章节'}"><span data-reading-title>${esc(title(w))}</span>${w.kind==='note'?'':icon('chevron-down')}</button><span class="ep-title-context"></span>${button('pane-menu','窗口操作菜单','ellipsis',w.id,'ep-icon ep-title-menu')}`;
+    header.innerHTML = `<button class="ep-pane-title" data-act="${w.kind==='reading'||w.kind==='reference'?'reading-directory':'activate'}" data-id="${esc(w.id)}" aria-label="${w.kind==='note'?'显示笔记工具':'选择书卷和章节'}" title="${esc(title(w))}">${w.kind==='note'?'<span class="ep-kind-label">笔记</span>':''}<span data-reading-title>${esc(title(w))}</span>${w.kind==='note'?'':icon('chevron-down')}</button>${windowShortcuts(w.id)}`;
 
     const scroll = node.querySelector('.ep-scroll');
     if (w.kind === 'reading') {
@@ -478,18 +486,27 @@
     requestAnimationFrame(() => panes.forEach((node,id) => { if (node.isConnected && node.dataset.ready === 'true') restorePosition(node,M.get(state,id)); }));
   }
   function renderSaved() {
-    q('[data-saved-count]').textContent = state.scenes.length;
-    q('.ep-saved-list').innerHTML = [...state.scenes].reverse().map(scene => `<button class="ep-nav-row${scene === M.top(state) ? ' is-current' : ''}" data-resume="${esc(scene.id)}">${icon(scene.members.length === 2 ? 'rows-2' : 'book-open')}<span>${esc(sceneTitle(scene))}<small>${scene === M.top(state) ? '当前阅读' : '点按最大化继续'}${scene.members.length === 2 ? ' · 双窗' : ''}</small></span></button>`).join('') || '<p class="ep-empty">留下的阅读现场，会在这里继续。</p>';
+    q('[data-saved-count]').textContent = state.scenes.length+state.floating.length+state.tabs.length;
+    const row=(id,attrs,kind)=>`<button class="ep-nav-row" ${attrs}>${icon(kind==='悬浮标签'?'bookmark':'picture-in-picture-2')}<span>${esc(title(M.get(state,id)))}<small>${kind}${M.get(state,id)?.kind==='note'?' · 笔记':''}</small></span></button>`;
+    q('.ep-saved-list').innerHTML = [...state.scenes].reverse().map(scene => `<button class="ep-nav-row${scene === M.top(state) ? ' is-current' : ''}" data-resume="${esc(scene.id)}">${icon(scene.members.length === 2 ? 'columns-2' : 'book-open')}<span>${esc(sceneTitle(scene))}<small>${scene === M.top(state) ? '当前阅读' : '最大化窗口'}${scene.members.length === 2 ? ' · 对读' : ''}</small></span></button>`).join('') + [...state.floating].reverse().map(id=>row(id,`data-act="focus-float" data-id="${esc(id)}"`,'浮窗')).join('') + state.tabs.map(t=>row(t.id,`data-tab="${esc(t.id)}"`,'悬浮标签')).join('') || '<p class="ep-empty">打开的窗口会留在这里。</p>';
   }
-  function closeMenu() { menuTarget = null; q('.ep-popover').hidden = q('.ep-menu-scrim').hidden = true; }
+  function closeMenu(restoreFocus=false) {
+    const anchor=menuAnchor; menuTarget=null;menuAnchor=null;
+    anchor?.setAttribute('aria-expanded','false');
+    q('.ep-popover').hidden=q('.ep-menu-scrim').hidden=true;
+    if(restoreFocus&&anchor?.isConnected)anchor.focus({preventScroll:true});
+  }
   function menu(id,anchor,isScene=false,isContent=false) {
-    closeMenu(); menuTarget = id; const panel=q('.ep-popover'), w=M.get(state,id);
+    if(menuAnchor===anchor){closeMenu(true);return;}
+    closeMenu(); menuTarget = id;menuAnchor=anchor;anchor.setAttribute('aria-expanded','true');anchor.setAttribute('aria-haspopup','menu'); const panel=q('.ep-popover'), w=M.get(state,id);
     const label=isScene?'对读组合操作':isContent ? w?.kind==='reading'?'经文操作':w?.kind==='note'?'笔记操作':'释经操作' : '窗口操作';
-    const actions=isScene ? [{act:'unpair',label:unpairLabel(),icon:'rows-2',id},{act:'close-scene',label:'关闭整个组合',icon:'x',id}] : isContent ? contentActions(w) : windowActions(id);
+    const actions=isScene ? [{act:'unpair',label:unpairLabel(),icon:'rows-2',id},{act:'close-scene',label:'关闭整个组合',icon:'x',id}] : isContent ? contentActions(w).filter(a=>['back','forward'].includes(a.act)) : windowActions(id);
     panel.setAttribute('aria-label',label); panel.dataset.scope=isScene?'scene':isContent?'content':'window';
-    panel.innerHTML=`<span class="ep-menu-label">${label}</span>`+actionButtons(actions,false);
+    panel.innerHTML=actionButtons(actions,false);panel.querySelectorAll('button').forEach(b=>b.setAttribute('role','menuitem'));
     panel.hidden = q('.ep-menu-scrim').hidden = false; const a=anchor.getBoundingClientRect(), p=phone.getBoundingClientRect();
-    panel.style.left=clamp(a.right-p.left-220,12,phone.clientWidth-232)+'px'; panel.style.top=clamp(a.bottom-p.top+5,12,Math.max(12,phone.clientHeight-panel.offsetHeight-15))+'px'; icons();
+    const below=a.bottom-p.top+6,above=a.top-p.top-panel.offsetHeight-6;
+    panel.style.left=clamp(a.right-p.left-panel.offsetWidth,12,phone.clientWidth-panel.offsetWidth-12)+'px'; panel.style.top=clamp(below+panel.offsetHeight<=phone.clientHeight-12?below:above,12,Math.max(12,phone.clientHeight-panel.offsetHeight-12))+'px';icons();
+    panel.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
   }
   function updateInert() {
     const capacityOpen = !q('.ep-capacity').hidden;
@@ -574,12 +591,10 @@
   phone.addEventListener('click',event => {
     if (performance.now() < ignoreClickUntil) { event.preventDefault(); return; }
     const surface=event.target.closest('.ep-pane,.ep-sheet'), tappedId=surface?.dataset.windowId;
-    const wasRevealed=tappedId===activeWindowId && toolsVisible;
     if(tappedId) activateWindow(tappedId);
     const b = event.target.closest('button'); if (!b || b.disabled) return;
-    if(b.classList.contains('ep-pane-title') && !wasRevealed) return;
     motionOrigin = b.getBoundingClientRect();
-    if (b.dataset.tab) { change(() => M.openFloat(state,b.dataset.tab,'打开悬浮标签')); return; }
+    if (b.dataset.tab) { if(drawerOpen)drawer(false); change(() => M.openFloat(state,b.dataset.tab,'打开悬浮标签')); return; }
     if (b.dataset.resume) { drawer(false); change(() => M.resume(state,b.dataset.resume)); return; }
     if (b.dataset.restoreEvent) { change(() => M.restoreEvent(state,b.dataset.restoreEvent)); q('.ep-history-panel').hidden = true; updateInert(); return; }
     if (b.dataset.filter) { historyFilter = b.dataset.filter; historyLimit = 50; renderHistory(); return; }
@@ -602,6 +617,7 @@
         break;
       }
       case 'raise-float': closeMenu(); activateWindow(id); break;
+      case 'focus-float': drawer(false); activateWindow(id); break;
       case 'activate': activateWindow(id); break;
       case 'drawer': drawer(true); break;
       case 'drawer-close': drawer(false); break;
@@ -645,7 +661,7 @@
       case 'pane-menu': menu(id,b); break;
       case 'content-menu': menu(id,b,false,true); break;
       case 'scene-menu': menu(id,b,true); break;
-      case 'menu-close': closeMenu(); break;
+      case 'menu-close': closeMenu(true); break;
       case 'next': closeMenu(); navigate(id,1); break;
       case 'prev': closeMenu(); navigate(id,-1); break;
       case 'back': change(() => M.travel(state,id,-1)); break;
@@ -676,7 +692,7 @@
   phone.addEventListener('pointerdown',event => {
     if (event.button !== 0) return;
     if (!q('.ep-capacity').hidden) return;
-    if(event.target.closest('.ep-tool-rail')) {gesture=null;return;}
+    if(event.target.closest('.ep-tool-rail,.ep-pane-head')) {gesture=null;return;}
     const rect = phone.getBoundingClientRect(), handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');
     const sheet=event.target.closest('.ep-sheet'), w=sheet && M.get(state,sheet.dataset.windowId), geometry=w && floatGeometry(w);
     if(w && !drawerOpen && !directory) raiseFloat(w.id);
@@ -718,8 +734,16 @@
   phone.addEventListener('pointercancel',event => endGesture(event,true),true);
   phone.addEventListener('keydown',event => {
     if (event.key === 'Escape') {
-      if (!q('.ep-capacity').hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(); else if (drawerOpen) drawer(false); else hideTools();
+      if (!q('.ep-capacity').hidden) closeCapacity(); else if (directory) closeDirectory(); else if (!q('.ep-history-panel').hidden) { q('.ep-history-panel').hidden = true; updateInert(); } else if (menuTarget) closeMenu(true); else if (drawerOpen) drawer(false); else hideTools();
       event.preventDefault(); return;
+    }
+    if(menuTarget) {
+      const items=[...q('.ep-popover').querySelectorAll('button:not(:disabled)')],index=items.indexOf(document.activeElement);
+      if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+        event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?items.length-1:(index+(event.key==='ArrowDown'?1:-1)+items.length)%items.length;
+        items[next]?.focus({preventScroll:true});return;
+      }
+      if(event.key==='Tab')closeMenu(true);
     }
     if(event.target.classList.contains('ep-pane') && ['Enter',' '].includes(event.key)) { event.preventDefault(); activateWindow(event.target.dataset.windowId); return; }
     const handle = event.target.closest('.ep-handle,.ep-resize,.ep-divider');

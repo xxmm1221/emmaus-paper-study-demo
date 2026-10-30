@@ -27,7 +27,7 @@ for(const mobile of [false,true]){
  await p.screenshot({path:path.join(out,mobile?'narrow-pair.png':'wide-pair.png')});await p.emulateMedia({colorScheme:'dark'});await p.screenshot({path:path.join(out,mobile?'narrow-dark.png':'wide-dark.png')});
  await p.reload();await expect(div).toBeVisible();await p.waitForTimeout(650);assert.deepEqual((await st()).scenes.at(-1).members,order);assert.equal((await st()).scenes.at(-1).ratio,ratio);pass((mobile?'窄屏':'宽屏')+'刷新保留对调与比例');
  // Actual shortcut creation uses the same width constraint for all floating windows.
- await f.locator('.ep-main .ep-pane-title').first().click();await f.locator('.ep-main [data-act=pin]').first().click();await p.waitForTimeout(700);await f.locator('.ep-main .ep-pane-title').last().click();await f.locator('.ep-main [data-act=pin]').last().click();await p.waitForTimeout(700);await expect(f.locator('.ep-sheet')).toHaveCount(2);
+ await f.locator('.ep-main .ep-pane').first().focus();await p.keyboard.press('Enter');await f.locator('.ep-main [data-act=pane-menu]').first().click();await f.locator('.ep-popover [data-act=pin]').click();await p.waitForTimeout(700);await f.locator('.ep-main .ep-pane').last().focus();await p.keyboard.press('Enter');await f.locator('.ep-main [data-act=pane-menu]').last().click();await f.locator('.ep-popover [data-act=pin]').click();await p.waitForTimeout(700);await expect(f.locator('.ep-sheet')).toHaveCount(2);
  const widths=await f.locator('.ep-sheet').evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().width));assert(widths.every(w=>mobile?w>350&&w<390:w<=440&&w>400));pass((mobile?'窄屏浮窗保留原宽度':'宽屏双浮窗最大宽度 440px'));
  await p.screenshot({path:path.join(out,mobile?'narrow-floats.png':'wide-floats.png')});await ctx.close();
 }
